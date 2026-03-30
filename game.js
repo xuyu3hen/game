@@ -1,20 +1,15 @@
 /* ===== Supabase 配置 ===== */
-const SUPABASE_URL = 'https://khkipsfovatbqoacitcb.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtoa2lwc2ZvdmF0YnFvYWNpdGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTY5MzksImV4cCI6MjA5MDM5MjkzOX0.KeBXedxf28oNg5jwaS5IQ4h3ErjrnDHLRKTA6RorAkc';
-
-// 初始化 Supabase
-const supabaseClient = (function() {
+let db = null;
+(function initSupabase() {
   try {
-    if (typeof window !== 'undefined' && typeof window.supabase !== 'undefined') {
-      return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { createClient } = window.supabase;
+    if (createClient) {
+      db = createClient('https://khkipsfovatbqoacitcb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtoa2lwc2ZvdmF0YnFvYWNpdGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTY5MzksImV4cCI6MjA5MDM5MjkzOX0.KeBXedxf28oNg5jwaS5IQ4h3ErjrnDHLRKTA6RorAkc');
     }
   } catch (e) {
     console.warn('Supabase SDK 未加载，排行榜功能不可用');
   }
-  return null;
 })();
-
-const supabase = supabaseClient;
 
 /* ===== 辅助函数：玩家 ID ===== */
 function getPlayerId() {
@@ -100,7 +95,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // 加载排行榜
-  if (supabase) {
+  if (db) {
     loadLeaderboard();
   } else {
     document.getElementById('leaderboard-content').innerHTML = '<div class="error">排行榜功能需要配置 Supabase</div>';
@@ -480,7 +475,7 @@ function updateScoresDisplay() {
 
 /* ===== 排行榜功能 ===== */
 async function loadLeaderboard() {
-  if (!supabase) return;
+  if (!db) return;
 
   const content = document.getElementById('leaderboard-content');
   content.innerHTML = '<div class="loading">加载中...</div>';
@@ -488,7 +483,7 @@ async function loadLeaderboard() {
   try {
     let query;
     if (gameState.leaderboardGame === 'cards') {
-      query = supabase
+      query = db
         .from('game_scores')
         .select('*')
         .eq('game_type', 'cards')
@@ -498,7 +493,7 @@ async function loadLeaderboard() {
         .order('created_at', { ascending: false })
         .limit(50);
     } else {
-      query = supabase
+      query = db
         .from('game_scores')
         .select('*')
         .eq('game_type', 'simon')
@@ -573,13 +568,13 @@ function switchLeaderboard(game, level) {
 }
 
 async function submitScore(gameType, difficulty, score, timeSeconds) {
-  if (!supabase) {
+  if (!db) {
     console.warn('Supabase 未配置，无法提交成绩到排行榜');
     return;
   }
 
   try {
-    const { error } = await supabase
+    const { error } = await db
       .from('game_scores')
       .insert({
         player_id: gameState.playerId,
