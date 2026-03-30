@@ -1,14 +1,26 @@
-/* ===== Supabase 配置 ===== */
-let db = null;
-(function initSupabase() {
-  try {
-    const { createClient } = window.supabase;
-    if (createClient) {
-      db = createClient('https://khkipsfovatbqoacitcb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtoa2lwc2ZvdmF0YnFvYWNpdGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTY5MzksImV4cCI6MjA5MDM5MjkzOX0.KeBXedxf28oNg5jwaS5IQ4h3ErjrnDHLRKTA6RorAkc');
+/* ===== Supabase 配置（动态加载，避免变量冲突） ===== */
+var _db = null;
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  s.onload = function() {
+    try {
+      _db = window.supabase.createClient(
+        'https://khkipsfovatbqoacitcb.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtoa2lwc2ZvdmF0YnFvYWNpdGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTY5MzksImV4cCI6MjA5MDM5MjkzOX0.KeBXedxf28oNg5jwaS5IQ4h3ErjrnDHLRKTA6RorAkc'
+      );
+      // SDK 加载完成后初始化排行榜
+      if (document.getElementById('leaderboard-content')) {
+        loadLeaderboard();
+      }
+    } catch(e) {
+      console.warn('Supabase 初始化失败');
     }
-  } catch (e) {
-    console.warn('Supabase SDK 未加载，排行榜功能不可用');
-  }
+  };
+  s.onerror = function() {
+    console.warn('Supabase SDK 加载失败，排行榜不可用');
+  };
+  document.head.appendChild(s);
 })();
 
 /* ===== 辅助函数：玩家 ID ===== */
@@ -94,11 +106,11 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('player-nickname').value = gameState.playerName;
   }
 
-  // 加载排行榜
-  if (db) {
+  // 加载排行榜（SDK 可能还没加载完，由 onload 回调处理）
+  if (_db) {
     loadLeaderboard();
   } else {
-    document.getElementById('leaderboard-content').innerHTML = '<div class="error">排行榜功能需要配置 Supabase</div>';
+    document.getElementById('leaderboard-content').innerHTML = '<div class="error">排行榜正在加载...</div>';
   }
 
   console.log('🎮 Player ID:', gameState.playerId);
@@ -106,36 +118,27 @@ window.addEventListener('DOMContentLoaded', () => {
 
 /* ===== 屏幕导航 ===== */
 function showScreen(screenId) {
-  console.log('showScreen 被调用，目标:', screenId);
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const target = document.getElementById(screenId);
-  if (target) {
-    target.classList.add('active');
-    gameState.currentScreen = screenId;
-    console.log('界面切换成功:', screenId);
-  } else {
-    console.error('找不到目标界面:', screenId);
-  }
+  document.getElementById(screenId).classList.add('active');
+  gameState.currentScreen = screenId;
 }
 
 function goHome() {
   stopCardsGame();
   stopSimonGame();
+  // 关闭所有弹窗
+  document.getElementById('modal-win').classList.add('hidden');
+  document.getElementById('modal-fail').classList.add('hidden');
   showScreen('screen-home');
   updateScoresDisplay();
 }
 
 function startGame(mode) {
-  console.log('startGame 被调用，模式:', mode);
   if (mode === 'cards') {
-    console.log('初始化翻牌游戏');
     initCardsGame('easy');
-    console.log('显示翻牌界面');
     showScreen('screen-cards');
   } else if (mode === 'simon') {
-    console.log('初始化 Simon 游戏');
     initSimonGame();
-    console.log('显示 Simon 界面');
     showScreen('screen-simon');
   }
 }
@@ -475,7 +478,7 @@ function updateScoresDisplay() {
 
 /* ===== 排行榜功能 ===== */
 async function loadLeaderboard() {
-  if (!db) return;
+  if (!_db) return;
 
   const content = document.getElementById('leaderboard-content');
   content.innerHTML = '<div class="loading">加载中...</div>';
@@ -483,7 +486,7 @@ async function loadLeaderboard() {
   try {
     let query;
     if (gameState.leaderboardGame === 'cards') {
-      query = db
+      query = _db
         .from('game_scores')
         .select('*')
         .eq('game_type', 'cards')
@@ -493,7 +496,7 @@ async function loadLeaderboard() {
         .order('created_at', { ascending: false })
         .limit(50);
     } else {
-      query = db
+      query = _db
         .from('game_scores')
         .select('*')
         .eq('game_type', 'simon')
@@ -568,13 +571,13 @@ function switchLeaderboard(game, level) {
 }
 
 async function submitScore(gameType, difficulty, score, timeSeconds) {
-  if (!db) {
+  if (!_db) {
     console.warn('Supabase 未配置，无法提交成绩到排行榜');
     return;
   }
 
   try {
-    const { error } = await db
+    const { error } = await _db
       .from('game_scores')
       .insert({
         player_id: gameState.playerId,
