@@ -1,12 +1,8 @@
 /* ===== 全局状态 ===== */
 let gameState = {
   currentScreen: 'home',
-  scores: {
-    cardsEasy: localStorage.getItem('score-cards-easy') || '--',
-    cardsMedium: localStorage.getItem('score-cards-medium') || '--',
-    cardsHard: localStorage.getItem('score-cards-hard') || '--',
-    simon: localStorage.getItem('score-simon') || 0
-  }
+  playerId: getPlayerId(),
+  scores: {}
 };
 
 const CARD_EMOJIS = ['🍎','🍌','🍉','🍊','🍋','🍌','🍓','🍒','🍑','🥝','🍍','🥭','🍐','🍈','🥕','🌽'];
@@ -26,15 +22,47 @@ let simonGame = {
   sequence: [],
   playerSequence: [],
   level: 1,
-  best: localStorage.getItem('score-simon') || 1,
+  best: 1,
   gameActive: false,
   canPlay: false,
   timerInterval: null
 };
 
+/* ===== 辅助函数：玩家 ID ===== */
+function getPlayerId() {
+  let id = localStorage.getItem('player-id');
+  if (!id) {
+    id = 'player_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    localStorage.setItem('player-id', id);
+  }
+  return id;
+}
+
+function getScoreKey(game, level = null) {
+  if (level) {
+    return `${gameState.playerId}-${game}-${level}`;
+  }
+  return `${gameState.playerId}-${game}`;
+}
+
+function loadScores() {
+  gameState.scores = {
+    cardsEasy: localStorage.getItem(getScoreKey('cards', 'easy')) || '--',
+    cardsMedium: localStorage.getItem(getScoreKey('cards', 'medium')) || '--',
+    cardsHard: localStorage.getItem(getScoreKey('cards', 'hard')) || '--',
+    simon: localStorage.getItem(getScoreKey('simon')) || 1
+  };
+}
+
 /* ===== 初始化 ===== */
 window.addEventListener('DOMContentLoaded', () => {
+  loadScores();
   updateScoresDisplay();
+
+  // 显示玩家 ID（截取后8位方便展示）
+  const shortId = gameState.playerId.substring(gameState.playerId.length - 8);
+  document.getElementById('player-id-display').textContent = '...' + shortId;
+  console.log('🎮 Player ID:', gameState.playerId);
 });
 
 /* ===== 屏幕导航 ===== */
@@ -193,11 +221,12 @@ function restartCards() {
 }
 
 function saveCardsScore(level, moves) {
-  const key = `score-cards-${level}`;
+  const key = getScoreKey('cards', level);
   const best = localStorage.getItem(key);
   if (!best || parseInt(moves) < parseInt(best)) {
     localStorage.setItem(key, moves);
-    gameState.scores[`cards${level.charAt(0).toUpperCase() + level.slice(1)}`] = moves;
+    const levelKey = 'cards' + level.charAt(0).toUpperCase() + level.slice(1);
+    gameState.scores[levelKey] = moves;
   }
 }
 
@@ -208,6 +237,7 @@ function initSimonGame() {
   simonGame.level = 1;
   simonGame.gameActive = false;
   simonGame.canPlay = false;
+  simonGame.best = localStorage.getItem(getScoreKey('simon')) || 1;
 
   document.getElementById('simon-level').textContent = '1';
   document.getElementById('simon-best-display').textContent = simonGame.best;
@@ -300,12 +330,12 @@ function simonPlayerPress(color) {
     simonGame.level++;
     document.getElementById('simon-level').textContent = simonGame.level;
 
-    // 更新最高分
-    if (simonGame.level > simonGame.best) {
-      simonGame.best = simonGame.level;
-      localStorage.setItem('score-simon', simonGame.best);
-      document.getElementById('simon-best-display').textContent = simonGame.best;
-    }
+  // 更新最高分
+  if (simonGame.level > simonGame.best) {
+    simonGame.best = simonGame.level;
+    localStorage.setItem(getScoreKey('simon'), simonGame.best);
+    document.getElementById('simon-best-display').textContent = simonGame.best;
+  }
 
     setTimeout(() => {
       simonGameRound();
@@ -382,8 +412,8 @@ function modalRetry() {
 
 /* ===== 成绩显示 ===== */
 function updateScoresDisplay() {
-  document.getElementById('best-cards-easy').textContent = localStorage.getItem('score-cards-easy') || '--';
-  document.getElementById('best-cards-medium').textContent = localStorage.getItem('score-cards-medium') || '--';
-  document.getElementById('best-cards-hard').textContent = localStorage.getItem('score-cards-hard') || '--';
-  document.getElementById('best-simon').textContent = localStorage.getItem('score-simon') || 0;
+  document.getElementById('best-cards-easy').textContent = localStorage.getItem(getScoreKey('cards', 'easy')) || '--';
+  document.getElementById('best-cards-medium').textContent = localStorage.getItem(getScoreKey('cards', 'medium')) || '--';
+  document.getElementById('best-cards-hard').textContent = localStorage.getItem(getScoreKey('cards', 'hard')) || '--';
+  document.getElementById('best-simon').textContent = localStorage.getItem(getScoreKey('simon')) || 1;
 }
