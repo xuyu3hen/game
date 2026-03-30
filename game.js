@@ -881,8 +881,8 @@ function closeImgPreview(e) {
 var brickGame = {
   canvas: null,
   ctx: null,
-  paddle: { x: 0, y: 0, width: 100, height: 14, speed: 8 },
-  ball: { x: 0, y: 0, dx: 4, dy: -4, radius: 8 },
+  paddle: { x: 0, y: 0, width: 100, height: 14, targetX: 0, trailX: 0 },
+  ball: { x: 0, y: 0, dx: 4, dy: -4, radius: 8, trail: [] },
   bricks: [],
   score: 0,
   lives: 3,
@@ -906,8 +906,11 @@ function initBrickGame() {
   brickGame.paddle.width = 100;
   brickGame.paddle.x = (brickGame.canvas.width - brickGame.paddle.width) / 2;
   brickGame.paddle.y = brickGame.canvas.height - 30;
+  brickGame.paddle.targetX = brickGame.paddle.x;
+  brickGame.paddle.trailX = brickGame.paddle.x;
 
-  // 设置小球位置
+  // 设置小球位置 + 清空尾迹
+  brickGame.ball.trail = [];
   resetBall();
 
   // 创建砖块
@@ -931,6 +934,7 @@ function initBrickGame() {
 }
 
 function resetBall() {
+  brickGame.ball.trail = []; // 清空尾迹
   brickGame.ball.x = brickGame.canvas.width / 2;
   brickGame.ball.y = brickGame.canvas.height - 50;
   brickGame.ball.dx = 4 * (Math.random() > 0.5 ? 1 : -1);
@@ -966,11 +970,12 @@ function brickMouseMove(e) {
   var rect = brickGame.canvas.getBoundingClientRect();
   var scaleX = brickGame.canvas.width / rect.width;
   var mouseX = (e.clientX - rect.left) * scaleX;
-  brickGame.paddle.x = mouseX - brickGame.paddle.width / 2;
-  if (brickGame.paddle.x < 0) brickGame.paddle.x = 0;
-  if (brickGame.paddle.x + brickGame.paddle.width > brickGame.canvas.width) {
-    brickGame.paddle.x = brickGame.canvas.width - brickGame.paddle.width;
+  var targetX = mouseX - brickGame.paddle.width / 2;
+  if (targetX < 0) targetX = 0;
+  if (targetX + brickGame.paddle.width > brickGame.canvas.width) {
+    targetX = brickGame.canvas.width - brickGame.paddle.width;
   }
+  brickGame.paddle.targetX = targetX;
 }
 
 function brickTouchMove(e) {
@@ -978,11 +983,12 @@ function brickTouchMove(e) {
   var rect = brickGame.canvas.getBoundingClientRect();
   var scaleX = brickGame.canvas.width / rect.width;
   var touchX = (e.touches[0].clientX - rect.left) * scaleX;
-  brickGame.paddle.x = touchX - brickGame.paddle.width / 2;
-  if (brickGame.paddle.x < 0) brickGame.paddle.x = 0;
-  if (brickGame.paddle.x + brickGame.paddle.width > brickGame.canvas.width) {
-    brickGame.paddle.x = brickGame.canvas.width - brickGame.paddle.width;
+  var targetX = touchX - brickGame.paddle.width / 2;
+  if (targetX < 0) targetX = 0;
+  if (targetX + brickGame.paddle.width > brickGame.canvas.width) {
+    targetX = brickGame.canvas.width - brickGame.paddle.width;
   }
+  brickGame.paddle.targetX = targetX;
 }
 
 function brickStartGame() {
@@ -996,6 +1002,21 @@ function playBrickGame() {
   if (!brickGame.running) return;
 
   renderBrick();
+
+  // --- 挡板惯性滑动（LERP） ---
+  var lerpFactor = 0.18; // 越小越滑，越大越跟手
+  brickGame.paddle.trailX = brickGame.paddle.x;
+  brickGame.paddle.x += (brickGame.paddle.targetX - brickGame.paddle.x) * lerpFactor;
+  // 夹紧边界
+  if (brickGame.paddle.x < 0) brickGame.paddle.x = 0;
+  if (brickGame.paddle.x + brickGame.paddle.width > brickGame.canvas.width) {
+    brickGame.paddle.x = brickGame.canvas.width - brickGame.paddle.width;
+  }
+
+  // --- 球尾迹更新 ---
+  var ball = brickGame.ball;
+  ball.trail.push({ x: ball.x, y: ball.y });
+  if (ball.trail.length > 12) ball.trail.shift(); // 最多12帧尾迹
 
   // 移动球
   brickGame.ball.x += brickGame.ball.dx;
@@ -1065,47 +1086,97 @@ function renderBrick() {
   // 清空画布
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 绘制砖块
+  // 绘制砖块（带发光底色）
   brickGame.bricks.forEach(function(brick) {
     if (!brick.alive) return;
+
+    // 砖块阴影/光晕
+    ctx.shadowColor = brick.color;
+    ctx.shadowBlur = 10;
     ctx.beginPath();
     ctx.roundRect(brick.x, brick.y, brick.width, brick.height, 4);
     ctx.fillStyle = brick.color;
     ctx.fill();
-    ctx.closePath();
-    // 高光
+    ctx.shadowBlur = 0;
+
+    // 砖块高光
+    var glossGrad = ctx.createLinearGradient(brick.x, brick.y, brick.x, brick.y + brick.height);
+    glossGrad.addColorStop(0, 'rgba(255,255,255,0.35)');
+    glossGrad.addColorStop(0.5, 'rgba(255,255,255,0.08)');
+    glossGrad.addColorStop(1, 'rgba(0,0,0,0.1)');
     ctx.beginPath();
-    ctx.roundRect(brick.x + 2, brick.y + 2, brick.width - 4, brick.height / 3, 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.roundRect(brick.x, brick.y, brick.width, brick.height, 4);
+    ctx.fillStyle = glossGrad;
     ctx.fill();
-    ctx.closePath();
   });
 
-  // 绘制挡板
+  // --- 挡板滑动残影 ---
+  var p = brickGame.paddle;
+  var slideDelta = p.x - p.trailX; // 滑动方向和距离
+  var slideIntensity = Math.min(Math.abs(slideDelta) / 30, 1); // 0~1 滑动强度
+
+  if (slideIntensity > 0.05) {
+    var trailAlpha = slideIntensity * 0.25;
+    ctx.beginPath();
+    ctx.roundRect(p.x - slideDelta * 1.5, p.y, p.width, p.height, 7);
+    ctx.fillStyle = 'rgba(83,52,131,' + trailAlpha + ')';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.roundRect(p.x - slideDelta * 3, p.y, p.width, p.height, 7);
+    ctx.fillStyle = 'rgba(83,52,131,' + (trailAlpha * 0.4) + ')';
+    ctx.fill();
+  }
+
+  // 挡板主体（带发光）
+  ctx.shadowColor = '#e94560';
+  ctx.shadowBlur = 16;
   ctx.beginPath();
-  ctx.roundRect(brickGame.paddle.x, brickGame.paddle.y, brickGame.paddle.width, brickGame.paddle.height, 7);
-  var paddleGradient = ctx.createLinearGradient(
-    brickGame.paddle.x, brickGame.paddle.y,
-    brickGame.paddle.x, brickGame.paddle.y + brickGame.paddle.height
-  );
+  ctx.roundRect(p.x, p.y, p.width, p.height, 7);
+  var paddleGradient = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.height);
   paddleGradient.addColorStop(0, '#e94560');
   paddleGradient.addColorStop(1, '#533483');
   ctx.fillStyle = paddleGradient;
   ctx.fill();
-  ctx.closePath();
+  ctx.shadowBlur = 0;
 
-  // 绘制球
+  // 挡板顶部高光
   ctx.beginPath();
-  ctx.arc(brickGame.ball.x, brickGame.ball.y, brickGame.ball.radius, 0, Math.PI * 2);
+  ctx.roundRect(p.x + 4, p.y + 2, p.width - 8, 4, 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fill();
+
+  // --- 球尾迹光点 ---
+  var ball = brickGame.ball;
+  ball.trail.forEach(function(pos, i) {
+    var alpha = (i / ball.trail.length) * 0.5; // 越远越淡
+    var r = ball.radius * (0.3 + (i / ball.trail.length) * 0.7); // 越远越小
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,209,102,' + alpha + ')';
+    ctx.fill();
+  });
+
+  // 球主体（带发光）
+  ctx.shadowColor = '#ffd166';
+  ctx.shadowBlur = 20;
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
   var ballGradient = ctx.createRadialGradient(
-    brickGame.ball.x - 2, brickGame.ball.y - 2, 0,
-    brickGame.ball.x, brickGame.ball.y, brickGame.ball.radius
+    ball.x - 2, ball.y - 2, 0,
+    ball.x, ball.y, ball.radius
   );
   ballGradient.addColorStop(0, '#ffffff');
   ballGradient.addColorStop(1, '#ffd166');
   ctx.fillStyle = ballGradient;
   ctx.fill();
-  ctx.closePath();
+  ctx.shadowBlur = 0;
+
+  // 球高光点
+  ctx.beginPath();
+  ctx.arc(ball.x - 3, ball.y - 3, 2, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.fill();
 
   // 如果没开始，显示提示
   if (!brickGame.running) {
