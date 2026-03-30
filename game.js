@@ -12,6 +12,16 @@ try {
   console.warn('Supabase SDK 未加载，排行榜功能不可用');
 }
 
+/* ===== 辅助函数：玩家 ID ===== */
+function getPlayerId() {
+  let id = localStorage.getItem('player-id');
+  if (!id) {
+    id = 'player_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    localStorage.setItem('player-id', id);
+  }
+  return id;
+}
+
 /* ===== 全局状态 ===== */
 let gameState = {
   currentScreen: 'home',
@@ -44,16 +54,6 @@ let simonGame = {
   canPlay: false,
   timerInterval: null
 };
-
-/* ===== 辅助函数：玩家 ID ===== */
-function getPlayerId() {
-  let id = localStorage.getItem('player-id');
-  if (!id) {
-    id = 'player_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    localStorage.setItem('player-id', id);
-  }
-  return id;
-}
 
 function saveNickname() {
   const name = document.getElementById('player-nickname').value.trim();

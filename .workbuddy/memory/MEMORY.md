@@ -8,8 +8,8 @@
 - **完成时间**：2026-03-30
 - **后端**：Supabase PostgreSQL（排行榜系统）
 - **Supabase URL**: https://khkipsfovatbqoacitcb.supabase.co
+- **Supabase Anon Key**: 已配置
 - **部署**：GitHub Pages（自动部署）
 
 ## 待办
-- 配置 Supabase anon key（game.js 第 3 行）
 - 导入数据库表结构（supabase-schema.sql）
