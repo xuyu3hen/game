@@ -518,6 +518,18 @@ html, body {
   user-select: none;
 }
 
+.card-item.previewing {
+  pointer-events: none;
+}
+
+.card-item.previewing .card-inner {
+  transform: rotateY(180deg);
+}
+
+.card-item.previewing .card-front {
+  opacity: 1;
+}
+
 .card-inner {
   width: 100%;
   height: 100%;

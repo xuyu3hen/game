@@ -83,7 +83,8 @@ let cardsGame = {
   moves: 0,
   startTime: null,
   timerInterval: null,
-  lockBoard: false
+  lockBoard: false,
+  previewMode: false
 };
 
 let simonGame = {
@@ -178,9 +179,9 @@ function initCardsGame(level) {
   cardsGame.flipped = [];
   cardsGame.matched = new Set();
   cardsGame.moves = 0;
-  cardsGame.lockBoard = false;
+  cardsGame.lockBoard = true;
+  cardsGame.previewMode = true;
   clearInterval(cardsGame.timerInterval);
-  cardsGame.startTime = Date.now();
 
   const config = { easy: {w:4, h:4}, medium: {w:5, h:4}, hard: {w:6, h:5} };
   const { w, h } = config[level];
@@ -204,7 +205,7 @@ function initCardsGame(level) {
 
   emojis.forEach((emoji, idx) => {
     const card = document.createElement('div');
-    card.className = 'card-item';
+    card.className = 'card-item previewing';
     card.innerHTML = `
       <div class="card-inner">
         <div class="card-back"></div>
@@ -225,7 +226,18 @@ function initCardsGame(level) {
   });
   document.getElementById('cards-level-selector').style.display = 'flex';
 
-  startCardsTimer();
+  // 显示所有卡牌 3 秒后盖上
+  const previewTime = 3000;
+  setTimeout(() => {
+    cardsGame.lockBoard = false;
+    cardsGame.previewMode = false;
+    document.querySelectorAll('.card-item').forEach(card => {
+      card.classList.remove('previewing');
+      card.classList.remove('flipped');
+    });
+    cardsGame.startTime = Date.now();
+    startCardsTimer();
+  }, previewTime);
 }
 
 function setCardsLevel(level) {
