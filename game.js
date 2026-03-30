@@ -1,8 +1,25 @@
+/* ===== Supabase 配置 ===== */
+const SUPABASE_URL = 'https://khkipsfovatbqoacitcb.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE'; // TODO: 替换为你的 anon key
+
+// 初始化 Supabase
+let supabase = null;
+try {
+  if (SUPABASE_ANON_KEY !== 'YOUR_ANON_KEY_HERE') {
+    supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+} catch (e) {
+  console.warn('Supabase SDK 未加载，排行榜功能不可用');
+}
+
 /* ===== 全局状态 ===== */
 let gameState = {
   currentScreen: 'home',
   playerId: getPlayerId(),
-  scores: {}
+  playerName: localStorage.getItem('player-name') || '',
+  scores: {},
+  leaderboardGame: 'cards',
+  leaderboardLevel: 'easy'
 };
 
 const CARD_EMOJIS = ['🍎','🍌','🍉','🍊','🍋','🍌','🍓','🍒','🍑','🥝','🍍','🥭','🍐','🍈','🥕','🌽'];
@@ -38,6 +55,16 @@ function getPlayerId() {
   return id;
 }
 
+function saveNickname() {
+  const name = document.getElementById('player-nickname').value.trim();
+  gameState.playerName = name;
+  if (name) {
+    localStorage.setItem('player-name', name);
+  } else {
+    localStorage.removeItem('player-name');
+  }
+}
+
 function getScoreKey(game, level = null) {
   if (level) {
     return `${gameState.playerId}-${game}-${level}`;
@@ -62,6 +89,19 @@ window.addEventListener('DOMContentLoaded', () => {
   // 显示玩家 ID（截取后8位方便展示）
   const shortId = gameState.playerId.substring(gameState.playerId.length - 8);
   document.getElementById('player-id-display').textContent = '...' + shortId;
+
+  // 恢复昵称
+  if (gameState.playerName) {
+    document.getElementById('player-nickname').value = gameState.playerName;
+  }
+
+  // 加载排行榜
+  if (supabase) {
+    loadLeaderboard();
+  } else {
+    document.getElementById('leaderboard-content').innerHTML = '<div class="error">排行榜功能需要配置 Supabase</div>';
+  }
+
   console.log('🎮 Player ID:', gameState.playerId);
 });
 
@@ -194,6 +234,8 @@ function checkMatch() {
     const msg = `用时 ${Math.floor(time / 60)} 分 ${time % 60} 秒，${cardsGame.moves} 步完成！`;
     showWinModal(msg, 'cards');
     saveCardsScore(cardsGame.level, cardsGame.moves);
+    // 提交到排行榜
+    submitScore('cards', cardsGame.level, cardsGame.moves, time);
   }
 
   cardsGame.flipped = [];
@@ -336,6 +378,8 @@ function simonPlayerPress(color) {
     localStorage.setItem(getScoreKey('simon'), simonGame.best);
     document.getElementById('simon-best-display').textContent = simonGame.best;
   }
+  // 提交到排行榜
+  submitScore('simon', null, simonGame.level - 1, null);
 
     setTimeout(() => {
       simonGameRound();
@@ -416,4 +460,136 @@ function updateScoresDisplay() {
   document.getElementById('best-cards-medium').textContent = localStorage.getItem(getScoreKey('cards', 'medium')) || '--';
   document.getElementById('best-cards-hard').textContent = localStorage.getItem(getScoreKey('cards', 'hard')) || '--';
   document.getElementById('best-simon').textContent = localStorage.getItem(getScoreKey('simon')) || 1;
+}
+
+/* ===== 排行榜功能 ===== */
+async function loadLeaderboard() {
+  if (!supabase) return;
+
+  const content = document.getElementById('leaderboard-content');
+  content.innerHTML = '<div class="loading">加载中...</div>';
+
+  try {
+    let query;
+    if (gameState.leaderboardGame === 'cards') {
+      query = supabase
+        .from('game_scores')
+        .select('*')
+        .eq('game_type', 'cards')
+        .eq('difficulty', gameState.leaderboardLevel)
+        .order('score', { ascending: true })
+        .order('time_seconds', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(50);
+    } else {
+      query = supabase
+        .from('game_scores')
+        .select('*')
+        .eq('game_type', 'simon')
+        .order('score', { ascending: false })
+        .order('time_seconds', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(50);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    renderLeaderboard(data);
+  } catch (err) {
+    console.error('加载排行榜失败:', err);
+    content.innerHTML = '<div class="error">加载失败，请稍后重试</div>';
+  }
+}
+
+function renderLeaderboard(scores) {
+  const content = document.getElementById('leaderboard-content');
+
+  if (!scores || scores.length === 0) {
+    content.innerHTML = '<div class="empty">暂无记录，快来挑战吧！</div>';
+    return;
+  }
+
+  const difficultyLabels = { easy: '简单', medium: '中等', hard: '困难' };
+
+  let html = '<div class="leaderboard-list">';
+  scores.forEach((record, index) => {
+    const rank = index + 1;
+    const rankClass = rank <= 3 ? `rank-${rank}` : '';
+    const name = record.player_name || '匿名玩家';
+    const isMe = record.player_id === gameState.playerId;
+
+    let scoreText = '';
+    if (gameState.leaderboardGame === 'cards') {
+      scoreText = `${record.score} 步 · ${formatTime(record.time_seconds)}`;
+    } else {
+      scoreText = `第 ${record.score} 关`;
+    }
+
+    html += `
+      <div class="leaderboard-item ${rankClass} ${isMe ? 'highlight' : ''}">
+        <div class="rank">${rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}</div>
+        <div class="player-info">
+          <div class="player-name">${name} ${isMe ? '(你)' : ''}</div>
+          <div class="player-time">${new Date(record.created_at).toLocaleDateString()}</div>
+        </div>
+        <div class="player-score">${scoreText}</div>
+      </div>
+    `;
+  });
+  html += '</div>';
+
+  content.innerHTML = html;
+}
+
+function switchLeaderboard(game, level) {
+  gameState.leaderboardGame = game;
+  gameState.leaderboardLevel = level;
+
+  // 更新 Tab 样式
+  document.querySelectorAll('.leaderboard-tab').forEach(tab => {
+    const isActive = tab.dataset.game === game && tab.dataset.level === level;
+    tab.classList.toggle('active', isActive);
+  });
+
+  loadLeaderboard();
+}
+
+async function submitScore(gameType, difficulty, score, timeSeconds) {
+  if (!supabase) {
+    console.warn('Supabase 未配置，无法提交成绩到排行榜');
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('game_scores')
+      .insert({
+        player_id: gameState.playerId,
+        player_name: gameState.playerName || null,
+        game_type: gameType,
+        difficulty: difficulty || null,
+        score: score,
+        time_seconds: timeSeconds || null
+      });
+
+    if (error) throw error;
+
+    console.log('✅ 成绩已提交到排行榜');
+    // 如果当前显示的是相关排行榜，刷新它
+    if (gameState.leaderboardGame === gameType &&
+        (gameType === 'simon' || gameState.leaderboardLevel === difficulty)) {
+      loadLeaderboard();
+    }
+  } catch (err) {
+    console.error('提交成绩失败:', err);
+  }
+}
+
+function formatTime(seconds) {
+  if (!seconds) return '--:--';
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  return `${min}:${String(sec).padStart(2, '0')}`;
 }

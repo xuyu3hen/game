@@ -183,6 +183,146 @@ html, body {
   flex-wrap: wrap;
 }
 
+.nickname-section {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.nickname-section input {
+  background: var(--bg);
+  border: 2px solid var(--surface2);
+  border-radius: 12px;
+  padding: 10px 16px;
+  color: var(--text);
+  font-size: 0.9rem;
+  width: 200px;
+  text-align: center;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+
+.nickname-section input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(233,69,96,0.3);
+}
+
+/* ===== 排行榜 ===== */
+.leaderboard-section {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-top: 32px;
+  box-shadow: var(--shadow);
+}
+
+.leaderboard-section h3 {
+  font-size: 1rem;
+  margin-bottom: 16px;
+  color: var(--text2);
+}
+
+.leaderboard-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.leaderboard-tab {
+  background: var(--bg);
+  color: var(--text2);
+  border: 2px solid var(--surface2);
+  border-radius: 16px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+
+.leaderboard-tab.active,
+.leaderboard-tab:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--surface2);
+}
+
+.leaderboard-content {
+  min-height: 200px;
+}
+
+.loading,
+.error,
+.empty {
+  text-align: center;
+  color: var(--text2);
+  padding: 40px 20px;
+}
+
+.error { color: var(--accent); }
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 10px 14px;
+  transition: all var(--transition);
+}
+
+.leaderboard-item:hover {
+  background: var(--bg2);
+}
+
+.leaderboard-item.highlight {
+  background: linear-gradient(135deg, rgba(233,69,96,0.1), rgba(83,52,131,0.1));
+  border: 1px solid var(--accent2);
+}
+
+.leaderboard-item.rank-1,
+.leaderboard-item.rank-2,
+.leaderboard-item.rank-3 {
+  background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.02));
+  border: 1px solid rgba(255,215,0,0.2);
+}
+
+.rank {
+  width: 32px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.player-info {
+  flex: 1;
+}
+
+.player-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.player-time {
+  font-size: 0.75rem;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+.player-score {
+  font-weight: 700;
+  color: var(--warning);
+  font-size: 0.9rem;
+}
+
 .score-item {
   display: flex;
   flex-direction: column;

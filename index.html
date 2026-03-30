@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>记忆力训练游戏</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -34,6 +35,19 @@
         </div>
       </div>
 
+      <div class="leaderboard-section">
+        <h3>🏆 排行榜</h3>
+        <div class="leaderboard-tabs">
+          <button class="leaderboard-tab active" data-game="cards" data-level="easy" onclick="switchLeaderboard('cards', 'easy')">翻牌·简单</button>
+          <button class="leaderboard-tab" data-game="cards" data-level="medium" onclick="switchLeaderboard('cards', 'medium')">翻牌·中等</button>
+          <button class="leaderboard-tab" data-game="cards" data-level="hard" onclick="switchLeaderboard('cards', 'hard')">翻牌·困难</button>
+          <button class="leaderboard-tab" data-game="simon" onclick="switchLeaderboard('simon', null)">序列记忆</button>
+        </div>
+        <div class="leaderboard-content" id="leaderboard-content">
+          <div class="loading">加载中...</div>
+        </div>
+      </div>
+
       <div class="best-scores">
         <h3>📊 最佳记录</h3>
         <div class="player-id">👤 玩家 ID: <span id="player-id-display">loading...</span></div>
@@ -55,6 +69,10 @@
             <span class="score-val" id="best-simon">--</span>
           </div>
         </div>
+      </div>
+
+      <div class="nickname-section">
+        <input type="text" id="player-nickname" placeholder="输入昵称（可选）" maxlength="20" onchange="saveNickname()" />
       </div>
     </div>
   </div>
