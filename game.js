@@ -143,7 +143,6 @@ window.addEventListener('DOMContentLoaded', function() {
     }
   });
 });
-});
 
 /* ===== 屏幕导航 ===== */
 function showScreen(screenId) {
