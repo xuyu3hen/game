@@ -26,6 +26,27 @@
   <!-- 首页 -->
   <div id="screen-home" class="screen">
     <div class="home-container">
+      <!-- 打赏区域 -->
+      <div class="tip-section" id="tip-section">
+        <div class="tip-toggle" onclick="toggleTip()">
+          <span>☕ 觉得有趣？请作者喝杯咖啡</span>
+          <span class="tip-arrow" id="tip-arrow">▼</span>
+        </div>
+        <div class="tip-content hidden" id="tip-content">
+          <div class="tip-codes">
+            <div class="tip-code-item">
+              <div class="tip-code-label">微信</div>
+              <img class="tip-qr" src="wechat-pay.png" alt="微信收款码" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%230777b5%22 width=%22200%22 height=%22200%22 rx=%2216%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22 font-family=%22sans-serif%22>微信收款码</text></svg>'" />
+            </div>
+            <div class="tip-code-item">
+              <div class="tip-code-label">支付宝</div>
+              <img class="tip-qr" src="alipay.png" alt="支付宝收款码" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%2316779a%22 width=%22200%22 height=%22200%22 rx=%2216%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22 font-family=%22sans-serif%22>支付宝收款码</text></svg>'" />
+            </div>
+          </div>
+          <p class="tip-thanks">每一份支持都是最大的鼓励 💕</p>
+        </div>
+      </div>
+
       <div class="home-welcome">
         <span class="welcome-label">当前玩家</span>
         <span class="welcome-name" id="current-player-name">-</span>
@@ -96,27 +117,6 @@
             <span class="score-label">2048</span>
             <span class="score-val" id="best-game2048">--</span>
           </div>
-        </div>
-      </div>
-
-      <!-- 打赏区域 -->
-      <div class="tip-section" id="tip-section">
-        <div class="tip-toggle" onclick="toggleTip()">
-          <span>☕ 觉得有趣？请作者喝杯咖啡</span>
-          <span class="tip-arrow" id="tip-arrow">▼</span>
-        </div>
-        <div class="tip-content hidden" id="tip-content">
-          <div class="tip-codes">
-            <div class="tip-code-item">
-              <div class="tip-code-label">微信</div>
-              <img class="tip-qr" src="wechat-pay.png" alt="微信收款码" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%230777b5%22 width=%22200%22 height=%22200%22 rx=%2216%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22 font-family=%22sans-serif%22>微信收款码</text></svg>'" />
-            </div>
-            <div class="tip-code-item">
-              <div class="tip-code-label">支付宝</div>
-              <img class="tip-qr" src="alipay.png" alt="支付宝收款码" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%2316779a%22 width=%22200%22 height=%22200%22 rx=%2216%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22 font-family=%22sans-serif%22>支付宝收款码</text></svg>'" />
-            </div>
-          </div>
-          <p class="tip-thanks">每一份支持都是最大的鼓励 💕</p>
         </div>
       </div>
     </div>
