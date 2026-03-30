@@ -181,6 +181,9 @@ function startGame(mode) {
   } else if (mode === 'game2048') {
     initGame2048();
     showScreen('screen-2048');
+  } else if (mode === 'brick') {
+    initBrickGame();
+    showScreen('screen-brick');
   }
 }
 
@@ -529,6 +532,7 @@ function updateScoresDisplay() {
   document.getElementById('best-cards-hard').textContent = localStorage.getItem(getScoreKey('cards', 'hard')) || '--';
   document.getElementById('best-simon').textContent = localStorage.getItem(getScoreKey('simon')) || 1;
   document.getElementById('best-game2048').textContent = localStorage.getItem(getScoreKey('game2048')) || 0;
+  document.getElementById('best-brick').textContent = localStorage.getItem(getScoreKey('brick')) || '--';
 }
 
 /* ===== 排行榜功能 ===== */
@@ -568,6 +572,14 @@ async function loadLeaderboard() {
         .order('time_seconds', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(50);
+    } else if (gameState.leaderboardGame === 'brick') {
+      query = _db
+        .from('game_scores')
+        .select('*')
+        .eq('game_type', 'brick')
+        .order('score', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(50);
     }
 
     const { data, error } = await query;
@@ -604,6 +616,8 @@ function renderLeaderboard(scores) {
     } else if (gameState.leaderboardGame === 'simon') {
       scoreText = `第 ${record.score} 关`;
     } else if (gameState.leaderboardGame === 'game2048') {
+      scoreText = `得分 ${record.score}`;
+    } else if (gameState.leaderboardGame === 'brick') {
       scoreText = `得分 ${record.score}`;
     }
 
@@ -659,7 +673,7 @@ async function submitScore(gameType, difficulty, score, timeSeconds) {
     console.log('✅ 成绩已提交到排行榜');
     // 如果当前显示的是相关排行榜，刷新它
     if (gameState.leaderboardGame === gameType &&
-        (gameType === 'simon' || gameType === 'game2048' || gameState.leaderboardLevel === difficulty)) {
+        (gameType === 'simon' || gameType === 'game2048' || gameType === 'brick' || gameState.leaderboardLevel === difficulty)) {
       loadLeaderboard();
     }
   } catch (err) {
@@ -861,4 +875,293 @@ function previewImg(img) {
 function closeImgPreview(e) {
   if (e && e.target !== document.getElementById('modal-img-preview')) return;
   document.getElementById('modal-img-preview').classList.add('hidden');
+}
+
+/* ===== 打砖块游戏逻辑 ===== */
+var brickGame = {
+  canvas: null,
+  ctx: null,
+  paddle: { x: 0, y: 0, width: 100, height: 14, speed: 8 },
+  ball: { x: 0, y: 0, dx: 4, dy: -4, radius: 8 },
+  bricks: [],
+  score: 0,
+  lives: 3,
+  level: 1,
+  running: false,
+  animationId: null,
+  brickColors: ['#e94560', '#f65e3b', '#ffd166', '#06d6a0', '#0074d9', '#533483']
+};
+
+function initBrickGame() {
+  brickGame.canvas = document.getElementById('brick-canvas');
+  brickGame.ctx = brickGame.canvas.getContext('2d');
+
+  // 重置游戏状态
+  brickGame.score = 0;
+  brickGame.lives = 3;
+  brickGame.level = 1;
+  brickGame.running = false;
+
+  // 设置挡板位置
+  brickGame.paddle.width = 100;
+  brickGame.paddle.x = (brickGame.canvas.width - brickGame.paddle.width) / 2;
+  brickGame.paddle.y = brickGame.canvas.height - 30;
+
+  // 设置小球位置
+  resetBall();
+
+  // 创建砖块
+  createBricks();
+
+  // 更新显示
+  updateBrickDisplay();
+
+  // 绑定事件
+  brickGame.canvas.onmousemove = brickMouseMove;
+  brickGame.canvas.ontouchmove = brickTouchMove;
+  brickGame.canvas.onclick = brickStartGame;
+
+  // 停止之前的动画
+  if (brickGame.animationId) {
+    cancelAnimationFrame(brickGame.animationId);
+  }
+
+  // 渲染初始画面
+  renderBrick();
+}
+
+function resetBall() {
+  brickGame.ball.x = brickGame.canvas.width / 2;
+  brickGame.ball.y = brickGame.canvas.height - 50;
+  brickGame.ball.dx = 4 * (Math.random() > 0.5 ? 1 : -1);
+  brickGame.ball.dy = -4;
+  brickGame.running = false;
+}
+
+function createBricks() {
+  brickGame.bricks = [];
+  var rows = 4 + Math.floor(brickGame.level / 2);
+  var cols = 8;
+  var brickWidth = 65;
+  var brickHeight = 20;
+  var padding = 8;
+  var offsetTop = 40;
+  var offsetLeft = (brickGame.canvas.width - (cols * (brickWidth + padding) - padding)) / 2;
+
+  for (var r = 0; r < rows; r++) {
+    for (var c = 0; c < cols; c++) {
+      brickGame.bricks.push({
+        x: offsetLeft + c * (brickWidth + padding),
+        y: offsetTop + r * (brickHeight + padding),
+        width: brickWidth,
+        height: brickHeight,
+        alive: true,
+        color: brickGame.brickColors[r % brickGame.brickColors.length]
+      });
+    }
+  }
+}
+
+function brickMouseMove(e) {
+  var rect = brickGame.canvas.getBoundingClientRect();
+  var scaleX = brickGame.canvas.width / rect.width;
+  var mouseX = (e.clientX - rect.left) * scaleX;
+  brickGame.paddle.x = mouseX - brickGame.paddle.width / 2;
+  if (brickGame.paddle.x < 0) brickGame.paddle.x = 0;
+  if (brickGame.paddle.x + brickGame.paddle.width > brickGame.canvas.width) {
+    brickGame.paddle.x = brickGame.canvas.width - brickGame.paddle.width;
+  }
+}
+
+function brickTouchMove(e) {
+  e.preventDefault();
+  var rect = brickGame.canvas.getBoundingClientRect();
+  var scaleX = brickGame.canvas.width / rect.width;
+  var touchX = (e.touches[0].clientX - rect.left) * scaleX;
+  brickGame.paddle.x = touchX - brickGame.paddle.width / 2;
+  if (brickGame.paddle.x < 0) brickGame.paddle.x = 0;
+  if (brickGame.paddle.x + brickGame.paddle.width > brickGame.canvas.width) {
+    brickGame.paddle.x = brickGame.canvas.width - brickGame.paddle.width;
+  }
+}
+
+function brickStartGame() {
+  if (!brickGame.running) {
+    brickGame.running = true;
+    playBrickGame();
+  }
+}
+
+function playBrickGame() {
+  if (!brickGame.running) return;
+
+  renderBrick();
+
+  // 移动球
+  brickGame.ball.x += brickGame.ball.dx;
+  brickGame.ball.y += brickGame.ball.dy;
+
+  // 墙壁碰撞
+  if (brickGame.ball.x + brickGame.ball.radius > brickGame.canvas.width ||
+      brickGame.ball.x - brickGame.ball.radius < 0) {
+    brickGame.ball.dx = -brickGame.ball.dx;
+  }
+  if (brickGame.ball.y - brickGame.ball.radius < 0) {
+    brickGame.ball.dy = -brickGame.ball.dy;
+  }
+
+  // 挡板碰撞
+  if (brickGame.ball.y + brickGame.ball.radius > brickGame.paddle.y &&
+      brickGame.ball.x > brickGame.paddle.x &&
+      brickGame.ball.x < brickGame.paddle.x + brickGame.paddle.width) {
+    brickGame.ball.dy = -Math.abs(brickGame.ball.dy);
+    // 根据击球位置调整角度
+    var hitPos = (brickGame.ball.x - brickGame.paddle.x) / brickGame.paddle.width;
+    brickGame.ball.dx = (hitPos - 0.5) * 8;
+  }
+
+  // 球落底
+  if (brickGame.ball.y + brickGame.ball.radius > brickGame.canvas.height) {
+    brickGame.lives--;
+    updateBrickDisplay();
+    if (brickGame.lives <= 0) {
+      brickGame.running = false;
+      brickGameOver();
+    } else {
+      resetBall();
+      setTimeout(function() { brickGame.running = true; }, 500);
+    }
+  }
+
+  // 砖块碰撞
+  for (var i = 0; i < brickGame.bricks.length; i++) {
+    var brick = brickGame.bricks[i];
+    if (!brick.alive) continue;
+
+    if (brickGame.ball.x + brickGame.ball.radius > brick.x &&
+        brickGame.ball.x - brickGame.ball.radius < brick.x + brick.width &&
+        brickGame.ball.y + brickGame.ball.radius > brick.y &&
+        brickGame.ball.y - brickGame.ball.radius < brick.y + brick.height) {
+      brick.alive = false;
+      brickGame.ball.dy = -brickGame.ball.dy;
+      brickGame.score += 10;
+      updateBrickDisplay();
+
+      // 检查是否通关
+      if (brickGame.bricks.every(function(b) { return !b.alive; })) {
+        brickNextLevel();
+        return;
+      }
+    }
+  }
+
+  brickGame.animationId = requestAnimationFrame(playBrickGame);
+}
+
+function renderBrick() {
+  var ctx = brickGame.ctx;
+  var canvas = brickGame.canvas;
+
+  // 清空画布
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 绘制砖块
+  brickGame.bricks.forEach(function(brick) {
+    if (!brick.alive) return;
+    ctx.beginPath();
+    ctx.roundRect(brick.x, brick.y, brick.width, brick.height, 4);
+    ctx.fillStyle = brick.color;
+    ctx.fill();
+    ctx.closePath();
+    // 高光
+    ctx.beginPath();
+    ctx.roundRect(brick.x + 2, brick.y + 2, brick.width - 4, brick.height / 3, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fill();
+    ctx.closePath();
+  });
+
+  // 绘制挡板
+  ctx.beginPath();
+  ctx.roundRect(brickGame.paddle.x, brickGame.paddle.y, brickGame.paddle.width, brickGame.paddle.height, 7);
+  var paddleGradient = ctx.createLinearGradient(
+    brickGame.paddle.x, brickGame.paddle.y,
+    brickGame.paddle.x, brickGame.paddle.y + brickGame.paddle.height
+  );
+  paddleGradient.addColorStop(0, '#e94560');
+  paddleGradient.addColorStop(1, '#533483');
+  ctx.fillStyle = paddleGradient;
+  ctx.fill();
+  ctx.closePath();
+
+  // 绘制球
+  ctx.beginPath();
+  ctx.arc(brickGame.ball.x, brickGame.ball.y, brickGame.ball.radius, 0, Math.PI * 2);
+  var ballGradient = ctx.createRadialGradient(
+    brickGame.ball.x - 2, brickGame.ball.y - 2, 0,
+    brickGame.ball.x, brickGame.ball.y, brickGame.ball.radius
+  );
+  ballGradient.addColorStop(0, '#ffffff');
+  ballGradient.addColorStop(1, '#ffd166');
+  ctx.fillStyle = ballGradient;
+  ctx.fill();
+  ctx.closePath();
+
+  // 如果没开始，显示提示
+  if (!brickGame.running) {
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('点击开始游戏', canvas.width / 2, canvas.height / 2);
+  }
+}
+
+function updateBrickDisplay() {
+  document.getElementById('brick-score').textContent = brickGame.score;
+  document.getElementById('brick-level').textContent = brickGame.level;
+  document.getElementById('brick-lives').textContent = '❤️'.repeat(Math.max(0, brickGame.lives));
+}
+
+function brickNextLevel() {
+  brickGame.level++;
+  brickGame.running = false;
+
+  // 增加挡板宽度
+  brickGame.paddle.width = Math.max(60, 100 - brickGame.level * 5);
+
+  createBricks();
+  resetBall();
+  updateBrickDisplay();
+  renderBrick();
+
+  // 保存最高分
+  var bestKey = getScoreKey('brick');
+  var best = parseInt(localStorage.getItem(bestKey)) || 0;
+  if (brickGame.score > best) {
+    localStorage.setItem(bestKey, brickGame.score);
+    submitScore('brick', null, brickGame.score, null);
+  }
+
+  setTimeout(function() {
+    alert('🎉 第 ' + brickGame.level + ' 关通过！准备下一关...');
+    brickGame.running = true;
+    playBrickGame();
+  }, 300);
+}
+
+function brickGameOver() {
+  var bestKey = getScoreKey('brick');
+  var best = parseInt(localStorage.getItem(bestKey)) || 0;
+  if (brickGame.score > best) {
+    localStorage.setItem(bestKey, brickGame.score);
+  }
+  submitScore('brick', null, brickGame.score, null);
+  showFailModal('游戏结束！最终得分：' + brickGame.score + '\n到达关卡：第 ' + brickGame.level + ' 关');
+}
+
+function restartBrick() {
+  if (brickGame.animationId) {
+    cancelAnimationFrame(brickGame.animationId);
+  }
+  initBrickGame();
 }

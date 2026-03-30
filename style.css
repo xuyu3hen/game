@@ -959,6 +959,29 @@ html, body {
   opacity: 0.6;
 }
 
+/* ===== 打砖块游戏 ===== */
+.brick-container {
+  max-width: 640px;
+  margin: 24px auto;
+  text-align: center;
+}
+
+#brick-canvas {
+  background: rgba(15,52,96,0.4);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 30px rgba(233,69,96,0.15);
+  border: 2px solid rgba(83,52,131,0.3);
+  max-width: 100%;
+  cursor: none;
+}
+
+.brick-controls-hint {
+  margin-top: 16px;
+  font-size: 0.9rem;
+  color: var(--text2);
+  opacity: 0.7;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 600px) {
   .title { font-size: 2rem; }

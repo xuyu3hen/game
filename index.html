@@ -78,6 +78,14 @@
             <span>经典数字游戏</span>
           </div>
         </div>
+        <div class="mode-card" onclick="startGame('brick')">
+          <div class="mode-icon">🧱</div>
+          <h2>打砖块</h2>
+          <p>控制挡板反弹弹珠，击碎所有砖块</p>
+          <div class="mode-levels">
+            <span>经典街机游戏</span>
+          </div>
+        </div>
       </div>
 
       <div class="leaderboard-section">
@@ -88,6 +96,7 @@
           <button class="leaderboard-tab" data-game="cards" data-level="hard" onclick="switchLeaderboard('cards', 'hard')">翻牌·困难</button>
           <button class="leaderboard-tab" data-game="simon" onclick="switchLeaderboard('simon', null)">序列记忆</button>
           <button class="leaderboard-tab" data-game="game2048" onclick="switchLeaderboard('game2048', null)">2048</button>
+          <button class="leaderboard-tab" data-game="brick" onclick="switchLeaderboard('brick', null)">打砖块</button>
         </div>
         <div class="leaderboard-content" id="leaderboard-content">
           <div class="loading">加载中...</div>
@@ -116,6 +125,10 @@
           <div class="score-item">
             <span class="score-label">2048</span>
             <span class="score-val" id="best-game2048">--</span>
+          </div>
+          <div class="score-item">
+            <span class="score-label">打砖块</span>
+            <span class="score-val" id="best-brick">--</span>
           </div>
         </div>
       </div>
@@ -208,6 +221,32 @@
     <div class="game2048-container">
       <div class="game2048-board" id="game2048-board"></div>
       <div class="game2048-hint">用方向键或滑动来移动</div>
+    </div>
+  </div>
+
+  <!-- 打砖块界面 -->
+  <div id="screen-brick" class="screen">
+    <div class="game-header">
+      <button class="btn-back" onclick="goHome()">← 返回</button>
+      <div class="game-info">
+        <div class="info-item">
+          <span class="info-label">得分</span>
+          <span class="info-val" id="brick-score">0</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">关卡</span>
+          <span class="info-val" id="brick-level">1</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">生命</span>
+          <span class="info-val" id="brick-lives">❤️❤️❤️</span>
+        </div>
+      </div>
+      <button class="btn-restart" onclick="restartBrick()">重新开始</button>
+    </div>
+    <div class="brick-container">
+      <canvas id="brick-canvas" width="600" height="500"></canvas>
+      <div class="brick-controls-hint">🎮 移动鼠标或触摸屏幕控制挡板 | 点击开始</div>
     </div>
   </div>
 
