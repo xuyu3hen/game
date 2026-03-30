@@ -5,8 +5,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // 初始化 Supabase
 let supabase = null;
 try {
-  if (SUPABASE_ANON_KEY !== 'YOUR_ANON_KEY_HERE') {
-    supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (typeof window.supabase !== 'undefined') {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 } catch (e) {
   console.warn('Supabase SDK 未加载，排行榜功能不可用');
