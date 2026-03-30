@@ -49,6 +49,14 @@
             <span>无限关卡挑战</span>
           </div>
         </div>
+        <div class="mode-card" onclick="startGame('game2048')">
+          <div class="mode-icon">🔢</div>
+          <h2>2048</h2>
+          <p>合并数字，挑战 2048</p>
+          <div class="mode-levels">
+            <span>经典数字游戏</span>
+          </div>
+        </div>
       </div>
 
       <div class="leaderboard-section">
@@ -58,6 +66,7 @@
           <button class="leaderboard-tab" data-game="cards" data-level="medium" onclick="switchLeaderboard('cards', 'medium')">翻牌·中等</button>
           <button class="leaderboard-tab" data-game="cards" data-level="hard" onclick="switchLeaderboard('cards', 'hard')">翻牌·困难</button>
           <button class="leaderboard-tab" data-game="simon" onclick="switchLeaderboard('simon', null)">序列记忆</button>
+          <button class="leaderboard-tab" data-game="game2048" onclick="switchLeaderboard('game2048', null)">2048</button>
         </div>
         <div class="leaderboard-content" id="leaderboard-content">
           <div class="loading">加载中...</div>
@@ -82,6 +91,10 @@
           <div class="score-item">
             <span class="score-label">序列记忆</span>
             <span class="score-val" id="best-simon">--</span>
+          </div>
+          <div class="score-item">
+            <span class="score-label">2048</span>
+            <span class="score-val" id="best-game2048">--</span>
           </div>
         </div>
       </div>
@@ -175,6 +188,29 @@
     </div>
   </div>
 
+  <!-- 2048 界面 -->
+  <div id="screen-2048" class="screen">
+    <div class="game-header">
+      <button class="btn-back" onclick="goHome()">← 返回</button>
+      <div class="game-info">
+        <div class="info-item">
+          <span class="info-label">得分</span>
+          <span class="info-val" id="game2048-score">0</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">最高</span>
+          <span class="info-val" id="game2048-best">0</span>
+        </div>
+      </div>
+      <button class="btn-restart" onclick="restartGame2048()">重新开始</button>
+    </div>
+
+    <div class="game2048-container">
+      <div class="game2048-board" id="game2048-board"></div>
+      <div class="game2048-hint">用方向键或滑动来移动</div>
+    </div>
+  </div>
+
   <!-- 胜利弹窗 -->
   <div id="modal-win" class="modal hidden">
     <div class="modal-box">
@@ -201,6 +237,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=9"></script>
+  <script src="game.js?v=10"></script>
 </body>
 </html>

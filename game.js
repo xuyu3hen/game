@@ -97,6 +97,14 @@ let simonGame = {
   timerInterval: null
 };
 
+let game2048 = {
+  grid: [],
+  score: 0,
+  bestScore: 0,
+  gameOver: false,
+  won: false
+};
+
 function getScoreKey(game, level) {
   if (level) {
     return gameState.playerId + '-' + game + '-' + level;
@@ -109,7 +117,8 @@ function loadScores() {
     cardsEasy: localStorage.getItem(getScoreKey('cards', 'easy')) || '--',
     cardsMedium: localStorage.getItem(getScoreKey('cards', 'medium')) || '--',
     cardsHard: localStorage.getItem(getScoreKey('cards', 'hard')) || '--',
-    simon: localStorage.getItem(getScoreKey('simon')) || 1
+    simon: localStorage.getItem(getScoreKey('simon')) || 1,
+    game2048: localStorage.getItem(getScoreKey('game2048')) || 0
   };
 }
 
@@ -169,6 +178,9 @@ function startGame(mode) {
   } else if (mode === 'simon') {
     initSimonGame();
     showScreen('screen-simon');
+  } else if (mode === 'game2048') {
+    initGame2048();
+    showScreen('screen-2048');
   }
 }
 
@@ -505,6 +517,8 @@ function modalRetry() {
     restartCards();
   } else if (gameState.currentScreen === 'screen-simon') {
     restartSimon();
+  } else if (gameState.currentScreen === 'screen-2048') {
+    restartGame2048();
   }
 }
 
@@ -514,6 +528,7 @@ function updateScoresDisplay() {
   document.getElementById('best-cards-medium').textContent = localStorage.getItem(getScoreKey('cards', 'medium')) || '--';
   document.getElementById('best-cards-hard').textContent = localStorage.getItem(getScoreKey('cards', 'hard')) || '--';
   document.getElementById('best-simon').textContent = localStorage.getItem(getScoreKey('simon')) || 1;
+  document.getElementById('best-game2048').textContent = localStorage.getItem(getScoreKey('game2048')) || 0;
 }
 
 /* ===== 排行榜功能 ===== */
@@ -535,11 +550,20 @@ async function loadLeaderboard() {
         .order('time_seconds', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(50);
-    } else {
+    } else if (gameState.leaderboardGame === 'simon') {
       query = _db
         .from('game_scores')
         .select('*')
         .eq('game_type', 'simon')
+        .order('score', { ascending: false })
+        .order('time_seconds', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(50);
+    } else if (gameState.leaderboardGame === 'game2048') {
+      query = _db
+        .from('game_scores')
+        .select('*')
+        .eq('game_type', 'game2048')
         .order('score', { ascending: false })
         .order('time_seconds', { ascending: true })
         .order('created_at', { ascending: false })
@@ -577,8 +601,10 @@ function renderLeaderboard(scores) {
     let scoreText = '';
     if (gameState.leaderboardGame === 'cards') {
       scoreText = `${record.score} 步 · ${formatTime(record.time_seconds)}`;
-    } else {
+    } else if (gameState.leaderboardGame === 'simon') {
       scoreText = `第 ${record.score} 关`;
+    } else if (gameState.leaderboardGame === 'game2048') {
+      scoreText = `得分 ${record.score}`;
     }
 
     html += `
@@ -633,7 +659,7 @@ async function submitScore(gameType, difficulty, score, timeSeconds) {
     console.log('✅ 成绩已提交到排行榜');
     // 如果当前显示的是相关排行榜，刷新它
     if (gameState.leaderboardGame === gameType &&
-        (gameType === 'simon' || gameState.leaderboardLevel === difficulty)) {
+        (gameType === 'simon' || gameType === 'game2048' || gameState.leaderboardLevel === difficulty)) {
       loadLeaderboard();
     }
   } catch (err) {
@@ -655,3 +681,168 @@ function toggleTip() {
   content.classList.toggle('hidden');
   arrow.textContent = content.classList.contains('hidden') ? '▼' : '▲';
 }
+
+/* ===== 2048 游戏逻辑 ===== */
+function initGame2048() {
+  game2048.grid = [
+    [0,0,0,0],
+    [0,0,0,0],
+    [0,0,0,0],
+    [0,0,0,0]
+  ];
+  game2048.score = 0;
+  game2048.gameOver = false;
+  game2048.won = false;
+  game2048.bestScore = localStorage.getItem(getScoreKey('game2048')) || 0;
+
+  document.getElementById('game2048-score').textContent = '0';
+  document.getElementById('game2048-best').textContent = game2048.bestScore;
+
+  addRandomTile();
+  addRandomTile();
+  renderGame2048();
+}
+
+function addRandomTile() {
+  var empty = [];
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      if (game2048.grid[i][j] === 0) {
+        empty.push({r: i, c: j});
+      }
+    }
+  }
+  if (empty.length === 0) return null;
+  var pos = empty[Math.floor(Math.random() * empty.length)];
+  game2048.grid[pos.r][pos.c] = Math.random() < 0.9 ? 2 : 4;
+  return pos;
+}
+
+function renderGame2048() {
+  var board = document.getElementById('game2048-board');
+  board.innerHTML = '';
+  var colors = {
+    2: '#eee4da', 4: '#ede0c8', 8: '#f2b179', 16: '#f59563',
+    32: '#f67c5f', 64: '#f65e3b', 128: '#edcf72', 256: '#edcc61',
+    512: '#edc850', 1024: '#edc53f', 2048: '#edc22e'
+  };
+
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      var cell = document.createElement('div');
+      cell.className = 'game2048-cell';
+      var val = game2048.grid[i][j];
+      if (val > 0) {
+        cell.textContent = val;
+        cell.style.backgroundColor = colors[val] || '#3c3a32';
+        cell.style.color = val <= 4 ? '#776e65' : '#f9f6f2';
+      }
+      board.appendChild(cell);
+    }
+  }
+}
+
+function moveGame2048(direction) {
+  if (game2048.gameOver) return;
+
+  var oldGrid = JSON.stringify(game2048.grid);
+  var moved = false;
+
+  if (direction === 'left') {
+    for (var i = 0; i < 4; i++) {
+      var row = slideAndMerge(game2048.grid[i]);
+      if (JSON.stringify(row) !== JSON.stringify(game2048.grid[i])) moved = true;
+      game2048.grid[i] = row;
+    }
+  } else if (direction === 'right') {
+    for (var i = 0; i < 4; i++) {
+      var row = game2048.grid[i].reverse();
+      row = slideAndMerge(row);
+      row.reverse();
+      if (JSON.stringify(row) !== JSON.stringify(game2048.grid[i].reverse())) moved = true;
+      game2048.grid[i] = row.reverse();
+    }
+  } else if (direction === 'up') {
+    for (var j = 0; j < 4; j++) {
+      var col = [game2048.grid[0][j], game2048.grid[1][j], game2048.grid[2][j], game2048.grid[3][j]];
+      col = slideAndMerge(col);
+      if (JSON.stringify(col) !== JSON.stringify([game2048.grid[0][j], game2048.grid[1][j], game2048.grid[2][j], game2048.grid[3][j]])) moved = true;
+      for (var i = 0; i < 4; i++) game2048.grid[i][j] = col[i];
+    }
+  } else if (direction === 'down') {
+    for (var j = 0; j < 4; j++) {
+      var col = [game2048.grid[3][j], game2048.grid[2][j], game2048.grid[1][j], game2048.grid[0][j]];
+      col = slideAndMerge(col);
+      col.reverse();
+      if (JSON.stringify(col) !== JSON.stringify([game2048.grid[3][j], game2048.grid[2][j], game2048.grid[1][j], game2048.grid[0][j]].reverse())) moved = true;
+      for (var i = 0; i < 4; i++) game2048.grid[i][j] = col[3-i];
+    }
+  }
+
+  if (moved) {
+    addRandomTile();
+    renderGame2048();
+    document.getElementById('game2048-score').textContent = game2048.score;
+
+    if (game2048.score > game2048.bestScore) {
+      game2048.bestScore = game2048.score;
+      localStorage.setItem(getScoreKey('game2048'), game2048.bestScore);
+      document.getElementById('game2048-best').textContent = game2048.bestScore;
+    }
+
+    checkGameOver();
+  }
+}
+
+function slideAndMerge(arr) {
+  var result = arr.filter(function(v) { return v !== 0; });
+  var scoreAdd = 0;
+  for (var i = 0; i < result.length - 1; i++) {
+    if (result[i] === result[i + 1]) {
+      result[i] *= 2;
+      scoreAdd += result[i];
+      result.splice(i + 1, 1);
+    }
+  }
+  game2048.score += scoreAdd;
+  while (result.length < 4) result.push(0);
+  return result;
+}
+
+function checkGameOver() {
+  // 检查是否还有空格
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      if (game2048.grid[i][j] === 0) return;
+    }
+  }
+  // 检查是否还能合并
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 3; j++) {
+      if (game2048.grid[i][j] === game2048.grid[i][j + 1]) return;
+    }
+  }
+  for (var i = 0; i < 3; i++) {
+    for (var j = 0; j < 4; j++) {
+      if (game2048.grid[i][j] === game2048.grid[i + 1][j]) return;
+    }
+  }
+  game2048.gameOver = true;
+  showFailModal('游戏结束！最终得分：' + game2048.score);
+  // 提交成绩
+  submitScore('game2048', null, game2048.score, null);
+}
+
+function restartGame2048() {
+  initGame2048();
+}
+
+// 键盘事件
+document.addEventListener('keydown', function(e) {
+  if (gameState.currentScreen !== 'screen-2048') return;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    e.preventDefault();
+    var dir = e.key.replace('Arrow', '').toLowerCase();
+    moveGame2048(dir);
+  }
+});
