@@ -36,11 +36,11 @@
           <div class="tip-codes">
             <div class="tip-code-item">
               <div class="tip-code-label">微信</div>
-              <img class="tip-qr" src="wechat-pay.png" alt="微信收款码" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%230777b5%22 width=%22200%22 height=%22200%22 rx=%2216%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22 font-family=%22sans-serif%22>微信收款码</text></svg>'" />
+              <img class="tip-qr" src="wechat-pay.png" alt="微信收款码" onclick="previewImg(this)" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%230777b5%22 width=%22200%22 height=%22200%22 rx=%2216%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22 font-family=%22sans-serif%22>微信收款码</text></svg>'" />
             </div>
             <div class="tip-code-item">
               <div class="tip-code-label">支付宝</div>
-              <img class="tip-qr" src="alipay.png" alt="支付宝收款码" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%2316779a%22 width=%22200%22 height=%22200%22 rx=%2216%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22 font-family=%22sans-serif%22>支付宝收款码</text></svg>'" />
+              <img class="tip-qr" src="alipay.png" alt="支付宝收款码" onclick="previewImg(this)" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%2316779a%22 width=%22200%22 height=%22200%22 rx=%2216%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22 font-family=%22sans-serif%22>支付宝收款码</text></svg>'" />
             </div>
           </div>
           <p class="tip-thanks">每一份支持都是最大的鼓励 💕</p>
@@ -234,6 +234,15 @@
         <button onclick="modalRetry()">再试一次</button>
         <button class="btn-secondary" onclick="goHome()">返回主页</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 图片预览弹窗 -->
+  <div id="modal-img-preview" class="modal hidden" onclick="closeImgPreview(event)">
+    <div class="img-preview-box" onclick="event.stopPropagation()">
+      <button class="img-preview-close" onclick="closeImgPreview()">✕</button>
+      <img id="img-preview-src" src="" alt="预览图片" />
+      <p id="img-preview-label" class="img-preview-label"></p>
     </div>
   </div>
 

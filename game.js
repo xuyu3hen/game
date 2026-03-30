@@ -846,3 +846,19 @@ document.addEventListener('keydown', function(e) {
     moveGame2048(dir);
   }
 });
+
+/* ===== 图片预览 ===== */
+function previewImg(img) {
+  var preview = document.getElementById('modal-img-preview');
+  var previewImg = document.getElementById('img-preview-src');
+  var label = document.getElementById('img-preview-label');
+
+  previewImg.src = img.src;
+  label.textContent = img.alt || '预览';
+  preview.classList.remove('hidden');
+}
+
+function closeImgPreview(e) {
+  if (e && e.target !== document.getElementById('modal-img-preview')) return;
+  document.getElementById('modal-img-preview').classList.add('hidden');
+}

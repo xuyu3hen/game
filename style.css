@@ -971,6 +971,59 @@ html, body {
   .modal-box { padding: 28px 20px; }
 }
 
+/* ===== 图片预览弹窗 ===== */
+.img-preview-box {
+  position: relative;
+  background: rgba(22,33,62,0.95);
+  border-radius: 20px;
+  padding: 20px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  animation: slideUp 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+  border: 2px solid rgba(233,69,96,0.3);
+}
+
+.img-preview-box img {
+  width: 100%;
+  max-width: 360px;
+  border-radius: 12px;
+  border: 2px solid var(--surface2);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.img-preview-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: rgba(233,69,96,0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  line-height: 1;
+}
+
+.img-preview-close:hover {
+  background: var(--accent);
+  transform: scale(1.1);
+}
+
+.img-preview-label {
+  margin-top: 14px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
 /* ===== 滚动条 ===== */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
