@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>测试</title>
+  <style>
+    .screen { display: none; }
+    .screen.active { display: block; }
+  </style>
+</head>
+<body>
+  <div id="screen-home" class="screen active">首页</div>
+  <div id="screen-cards" class="screen">翻牌</div>
+  <button onclick="startGame('cards')">点击进入翻牌</button>
+
+  <script>
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+    }
+
+    function startGame(mode) {
+      if (mode === 'cards') {
+        console.log('进入翻牌游戏');
+        showScreen('screen-cards');
+      }
+    }
+  </script>
+</body>
+</html>

@@ -107,9 +107,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
 /* ===== 屏幕导航 ===== */
 function showScreen(screenId) {
+  console.log('showScreen 被调用，目标:', screenId);
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(screenId).classList.add('active');
-  gameState.currentScreen = screenId;
+  const target = document.getElementById(screenId);
+  if (target) {
+    target.classList.add('active');
+    gameState.currentScreen = screenId;
+    console.log('界面切换成功:', screenId);
+  } else {
+    console.error('找不到目标界面:', screenId);
+  }
 }
 
 function goHome() {
@@ -120,11 +127,16 @@ function goHome() {
 }
 
 function startGame(mode) {
+  console.log('startGame 被调用，模式:', mode);
   if (mode === 'cards') {
+    console.log('初始化翻牌游戏');
     initCardsGame('easy');
+    console.log('显示翻牌界面');
     showScreen('screen-cards');
   } else if (mode === 'simon') {
+    console.log('初始化 Simon 游戏');
     initSimonGame();
+    console.log('显示 Simon 界面');
     showScreen('screen-simon');
   }
 }
