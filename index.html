@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>记忆力训练游戏</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- 首页 -->
+  <div id="screen-home" class="screen active">
+    <div class="home-container">
+      <div class="logo">🧠</div>
+      <h1 class="title">记忆力训练</h1>
+      <p class="subtitle">挑战你的大脑，提升记忆力！</p>
+
+      <div class="mode-cards">
+        <div class="mode-card" onclick="startGame('cards')">
+          <div class="mode-icon">🃏</div>
+          <h2>翻牌配对</h2>
+          <p>翻开卡片，找到所有相同的配对</p>
+          <div class="mode-levels">
+            <span>简单 • 中等 • 困难</span>
+          </div>
+        </div>
+        <div class="mode-card" onclick="startGame('simon')">
+          <div class="mode-icon">🎮</div>
+          <h2>序列记忆</h2>
+          <p>记住颜色序列，按顺序重复出来</p>
+          <div class="mode-levels">
+            <span>无限关卡挑战</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="best-scores">
+        <h3>📊 最佳记录</h3>
+        <div class="scores-row">
+          <div class="score-item">
+            <span class="score-label">翻牌·简单</span>
+            <span class="score-val" id="best-cards-easy">--</span>
+          </div>
+          <div class="score-item">
+            <span class="score-label">翻牌·中等</span>
+            <span class="score-val" id="best-cards-medium">--</span>
+          </div>
+          <div class="score-item">
+            <span class="score-label">翻牌·困难</span>
+            <span class="score-val" id="best-cards-hard">--</span>
+          </div>
+          <div class="score-item">
+            <span class="score-label">序列记忆</span>
+            <span class="score-val" id="best-simon">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 翻牌配对界面 -->
+  <div id="screen-cards" class="screen">
+    <div class="game-header">
+      <button class="btn-back" onclick="goHome()">← 返回</button>
+      <div class="game-info">
+        <div class="info-item">
+          <span class="info-label">关卡</span>
+          <span class="info-val" id="cards-level-label">简单</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">步数</span>
+          <span class="info-val" id="cards-moves">0</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">时间</span>
+          <span class="info-val" id="cards-time">00:00</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">配对</span>
+          <span class="info-val" id="cards-pairs">0/0</span>
+        </div>
+      </div>
+      <button class="btn-restart" onclick="restartCards()">重新开始</button>
+    </div>
+
+    <div class="level-selector" id="cards-level-selector">
+      <button class="level-btn active" data-level="easy" onclick="setCardsLevel('easy')">简单 (4×4)</button>
+      <button class="level-btn" data-level="medium" onclick="setCardsLevel('medium')">中等 (4×5)</button>
+      <button class="level-btn" data-level="hard" onclick="setCardsLevel('hard')">困难 (5×6)</button>
+    </div>
+
+    <div class="cards-board" id="cards-board"></div>
+  </div>
+
+  <!-- Simon序列记忆界面 -->
+  <div id="screen-simon" class="screen">
+    <div class="game-header">
+      <button class="btn-back" onclick="goHome()">← 返回</button>
+      <div class="game-info">
+        <div class="info-item">
+          <span class="info-label">关卡</span>
+          <span class="info-val" id="simon-level">1</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">最高</span>
+          <span class="info-val" id="simon-best-display">0</span>
+        </div>
+      </div>
+      <button class="btn-restart" onclick="restartSimon()">重新开始</button>
+    </div>
+
+    <div class="simon-container">
+      <div class="simon-status" id="simon-status">按开始按钮开始游戏</div>
+      <div class="simon-progress" id="simon-progress"></div>
+
+      <div class="simon-board">
+        <div class="simon-btn" id="simon-green"  data-color="green"  onclick="simonPlayerPress('green')"></div>
+        <div class="simon-btn" id="simon-red"    data-color="red"    onclick="simonPlayerPress('red')"></div>
+        <div class="simon-btn" id="simon-blue"   data-color="blue"   onclick="simonPlayerPress('blue')"></div>
+        <div class="simon-btn" id="simon-yellow" data-color="yellow" onclick="simonPlayerPress('yellow')"></div>
+      </div>
+
+      <button class="btn-simon-start" id="simon-start-btn" onclick="simonStart()">开始游戏</button>
+    </div>
+  </div>
+
+  <!-- 胜利弹窗 -->
+  <div id="modal-win" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-icon">🎉</div>
+      <h2 id="modal-title">恭喜通关！</h2>
+      <p id="modal-msg"></p>
+      <div class="modal-btns">
+        <button onclick="modalNextLevel()">下一关</button>
+        <button class="btn-secondary" onclick="goHome()">返回主页</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 失败弹窗 -->
+  <div id="modal-fail" class="modal hidden">
+    <div class="modal-box fail">
+      <div class="modal-icon">💔</div>
+      <h2>游戏结束</h2>
+      <p id="modal-fail-msg"></p>
+      <div class="modal-btns">
+        <button onclick="modalRetry()">再试一次</button>
+        <button class="btn-secondary" onclick="goHome()">返回主页</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
