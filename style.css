@@ -49,8 +49,114 @@ html, body {
 .home-container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 60px 24px 40px;
+  padding: 40px 24px 40px;
   text-align: center;
+}
+
+/* ===== 登录界面 ===== */
+.login-container {
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.login-box {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.login-box input {
+  width: 100%;
+  max-width: 320px;
+  background: var(--surface);
+  border: 2px solid var(--surface2);
+  border-radius: 16px;
+  padding: 16px 20px;
+  color: var(--text);
+  font-size: 1.1rem;
+  text-align: center;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+
+.login-box input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 24px rgba(233,69,96,0.3);
+}
+
+.btn-login {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: white;
+  border: none;
+  border-radius: 24px;
+  padding: 14px 48px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: inherit;
+  box-shadow: 0 6px 24px rgba(233,69,96,0.4);
+  letter-spacing: 0.05em;
+  width: 100%;
+  max-width: 320px;
+}
+
+.btn-login:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 32px rgba(233,69,96,0.5);
+}
+
+.login-hint {
+  margin-top: 24px;
+  font-size: 0.8rem;
+  color: var(--text2);
+  opacity: 0.6;
+}
+
+/* ===== 用户信息栏 ===== */
+.home-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 32px;
+  background: var(--surface);
+  padding: 12px 20px;
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.welcome-label {
+  font-size: 0.8rem;
+  color: var(--text2);
+}
+
+.welcome-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.btn-switch-user {
+  background: var(--surface2);
+  color: var(--text2);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+
+.btn-switch-user:hover {
+  background: var(--accent2);
+  color: var(--text);
 }
 
 .logo {
@@ -161,50 +267,11 @@ html, body {
   color: var(--text2);
 }
 
-.player-id {
-  font-size: 0.75rem;
-  color: var(--accent);
-  margin-bottom: 16px;
-  padding: 6px 12px;
-  background: var(--bg);
-  border-radius: 12px;
-  display: inline-block;
-}
-
-.player-id span {
-  font-family: monospace;
-  font-weight: 700;
-}
-
 .scores-row {
   display: flex;
   gap: 16px;
   justify-content: center;
   flex-wrap: wrap;
-}
-
-.nickname-section {
-  margin-top: 16px;
-  text-align: center;
-}
-
-.nickname-section input {
-  background: var(--bg);
-  border: 2px solid var(--surface2);
-  border-radius: 12px;
-  padding: 10px 16px;
-  color: var(--text);
-  font-size: 0.9rem;
-  width: 200px;
-  text-align: center;
-  transition: all var(--transition);
-  font-family: inherit;
-}
-
-.nickname-section input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 16px rgba(233,69,96,0.3);
 }
 
 /* ===== 排行榜 ===== */

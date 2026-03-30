@@ -25,19 +25,49 @@ var _db = null;
 
 /* ===== 辅助函数：玩家 ID ===== */
 function getPlayerId() {
-  let id = localStorage.getItem('player-id');
-  if (!id) {
-    id = 'player_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    localStorage.setItem('player-id', id);
+  return localStorage.getItem('player-id') || '';
+}
+
+function getPlayerName() {
+  return localStorage.getItem('player-name') || '';
+}
+
+function login() {
+  var name = document.getElementById('login-id').value.trim();
+  if (!name) {
+    document.getElementById('login-id').style.borderColor = 'var(--accent)';
+    document.getElementById('login-id').focus();
+    return;
   }
-  return id;
+  localStorage.setItem('player-id', name);
+  localStorage.setItem('player-name', name);
+  gameState.playerId = name;
+  gameState.playerName = name;
+
+  document.getElementById('current-player-name').textContent = name;
+  loadScores();
+  updateScoresDisplay();
+  showScreen('screen-home');
+
+  if (_db) {
+    loadLeaderboard();
+  }
+}
+
+function logout() {
+  localStorage.removeItem('player-id');
+  localStorage.removeItem('player-name');
+  gameState.playerId = '';
+  gameState.playerName = '';
+  document.getElementById('login-id').value = '';
+  showScreen('screen-login');
 }
 
 /* ===== 全局状态 ===== */
-let gameState = {
-  currentScreen: 'home',
-  playerId: getPlayerId(),
-  playerName: localStorage.getItem('player-name') || '',
+var gameState = {
+  currentScreen: 'login',
+  playerId: '',
+  playerName: '',
   scores: {},
   leaderboardGame: 'cards',
   leaderboardLevel: 'easy'
@@ -66,21 +96,11 @@ let simonGame = {
   timerInterval: null
 };
 
-function saveNickname() {
-  const name = document.getElementById('player-nickname').value.trim();
-  gameState.playerName = name;
-  if (name) {
-    localStorage.setItem('player-name', name);
-  } else {
-    localStorage.removeItem('player-name');
-  }
-}
-
-function getScoreKey(game, level = null) {
+function getScoreKey(game, level) {
   if (level) {
-    return `${gameState.playerId}-${game}-${level}`;
+    return gameState.playerId + '-' + game + '-' + level;
   }
-  return `${gameState.playerId}-${game}`;
+  return gameState.playerId + '-' + game;
 }
 
 function loadScores() {
@@ -93,27 +113,36 @@ function loadScores() {
 }
 
 /* ===== 初始化 ===== */
-window.addEventListener('DOMContentLoaded', () => {
-  loadScores();
-  updateScoresDisplay();
+window.addEventListener('DOMContentLoaded', function() {
+  // 检查是否有已登录的用户
+  var savedName = localStorage.getItem('player-name');
+  if (savedName) {
+    gameState.playerId = savedName;
+    gameState.playerName = savedName;
+    document.getElementById('current-player-name').textContent = savedName;
+    document.getElementById('login-id').value = savedName;
+    loadScores();
+    updateScoresDisplay();
+    showScreen('screen-home');
 
-  // 显示玩家 ID（截取后8位方便展示）
-  const shortId = gameState.playerId.substring(gameState.playerId.length - 8);
-  document.getElementById('player-id-display').textContent = '...' + shortId;
-
-  // 恢复昵称
-  if (gameState.playerName) {
-    document.getElementById('player-nickname').value = gameState.playerName;
-  }
-
-  // 加载排行榜（SDK 可能还没加载完，由 onload 回调处理）
-  if (_db) {
-    loadLeaderboard();
+    // 加载排行榜
+    if (_db) {
+      loadLeaderboard();
+    } else {
+      document.getElementById('leaderboard-content').innerHTML = '<div class="loading">排行榜正在加载...</div>';
+    }
   } else {
-    document.getElementById('leaderboard-content').innerHTML = '<div class="error">排行榜正在加载...</div>';
+    showScreen('screen-login');
+    document.getElementById('login-id').focus();
   }
 
-  console.log('🎮 Player ID:', gameState.playerId);
+  // 回车键触发登录
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && gameState.currentScreen === 'screen-login') {
+      login();
+    }
+  });
+});
 });
 
 /* ===== 屏幕导航 ===== */
