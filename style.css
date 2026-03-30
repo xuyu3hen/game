@@ -769,6 +769,88 @@ html, body {
   background: var(--surface2);
 }
 
+/* ===== 打赏区域 ===== */
+.tip-section {
+  margin-top: 32px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.tip-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 24px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text2);
+  transition: all var(--transition);
+  user-select: none;
+}
+
+.tip-toggle:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.03);
+}
+
+.tip-arrow {
+  font-size: 0.7rem;
+  transition: transform var(--transition);
+}
+
+.tip-content {
+  padding: 0 24px 24px;
+  text-align: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.tip-content.hidden { display: none; }
+
+.tip-codes {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.tip-code-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.tip-code-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text2);
+}
+
+.tip-qr {
+  width: 160px;
+  height: 160px;
+  border-radius: 12px;
+  border: 2px solid var(--surface2);
+  object-fit: cover;
+  background: var(--bg);
+  transition: transform var(--transition);
+}
+
+.tip-qr:hover {
+  transform: scale(1.05);
+  border-color: var(--accent);
+}
+
+.tip-thanks {
+  font-size: 0.85rem;
+  color: var(--text2);
+  opacity: 0.7;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 600px) {
   .title { font-size: 2rem; }

@@ -635,3 +635,11 @@ function formatTime(seconds) {
   const sec = seconds % 60;
   return `${min}:${String(sec).padStart(2, '0')}`;
 }
+
+/* ===== 打赏区域 ===== */
+function toggleTip() {
+  var content = document.getElementById('tip-content');
+  var arrow = document.getElementById('tip-arrow');
+  content.classList.toggle('hidden');
+  arrow.textContent = content.classList.contains('hidden') ? '▼' : '▲';
+}
