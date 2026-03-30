@@ -708,10 +708,17 @@ function initGame2048() {
   game2048.gameOver = false;
   game2048.won = false;
   game2048.bestScore = localStorage.getItem(getScoreKey('game2048')) || 0;
+  game2048.cells = null;   // 触发重新创建格子
+  game2048.cellEls = {};
+  game2048.mergedCells = {};
+  game2048.justNewCells = {};
+  game2048.prevGrid = null;
 
   document.getElementById('game2048-score').textContent = '0';
   document.getElementById('game2048-best').textContent = game2048.bestScore;
 
+  // 先渲染空棋盘建立 prevGrid，再加格子再次渲染触发动画
+  renderGame2048();
   addRandomTile();
   addRandomTile();
   renderGame2048();
@@ -729,52 +736,152 @@ function addRandomTile() {
   if (empty.length === 0) return null;
   var pos = empty[Math.floor(Math.random() * empty.length)];
   game2048.grid[pos.r][pos.c] = Math.random() < 0.9 ? 2 : 4;
+  // 标记新格子用于动画
+  game2048.justNewCells = {};
+  game2048.justNewCells[pos.r + '-' + pos.c] = true;
   return pos;
 }
 
 function renderGame2048() {
   var board = document.getElementById('game2048-board');
-  board.innerHTML = '';
   var colors = {
     2: '#eee4da', 4: '#ede0c8', 8: '#f2b179', 16: '#f59563',
     32: '#f67c5f', 64: '#f65e3b', 128: '#edcf72', 256: '#edcc61',
     512: '#edc850', 1024: '#edc53f', 2048: '#edc22e'
   };
 
+  // 如果是首次渲染，创建背景格子和所有格子
+  if (!game2048.cells) {
+    // 插入4x4背景格
+    board.innerHTML = '';
+    for (var bi = 0; bi < 16; bi++) {
+      var bg = document.createElement('div');
+      bg.className = 'game2048-bg-cell';
+      board.appendChild(bg);
+    }
+
+    game2048.cells = [];
+    game2048.cellEls = {};
+    for (var i = 0; i < 4; i++) {
+      game2048.cells[i] = [];
+      for (var j = 0; j < 4; j++) {
+        game2048.cells[i][j] = null;
+        var key = i + '-' + j;
+        var el = document.createElement('div');
+        el.className = 'game2048-cell';
+        el.style.display = 'none';
+        board.appendChild(el);
+        game2048.cellEls[key] = el;
+      }
+    }
+    game2048.prevGrid = JSON.parse(JSON.stringify(game2048.grid));
+    game2048.boardRect = null;
+    update2048CellPositions();
+    window.addEventListener('resize', function() { game2048.boardRect = null; });
+  }
+
+  update2048CellPositions();
+
+  // 对比新旧格子，算出动画
+  var prev = game2048.prevGrid || game2048.grid;
+  var mergedPositions = {};
+  var movedCells = {};
+
   for (var i = 0; i < 4; i++) {
     for (var j = 0; j < 4; j++) {
-      var cell = document.createElement('div');
-      cell.className = 'game2048-cell';
       var val = game2048.grid[i][j];
-      if (val > 0) {
-        cell.textContent = val;
-        cell.style.backgroundColor = colors[val] || '#3c3a32';
-        cell.style.color = val <= 4 ? '#776e65' : '#f9f6f2';
+      var key = i + '-' + j;
+
+      if (val === 0) {
+        // 消失了
+        if (game2048.cells[i][j]) {
+          game2048.cells[i][j].el.style.display = 'none';
+          game2048.cells[i][j] = null;
+        }
+      } else if (prev[i][j] === val && !game2048.mergedCells[key] && !game2048.justNewCells[key]) {
+        // 值没变也没合并，正常显示
+        updateCellStyle(game2048.cellEls[key], val, colors);
+        game2048.cells[i][j] = { el: game2048.cellEls[key], val: val };
+      } else {
+        // 新值或刚合并
+        var isMerge = !!game2048.mergedCells[key];
+        var isNew = !game2048.cells[i][j] || game2048.cells[i][j].val !== val;
+        updateCellStyle(game2048.cellEls[key], val, colors);
+        game2048.cellEls[key].style.display = 'flex';
+        game2048.cellEls[key].className = 'game2048-cell' + (isMerge ? ' merged' : (isNew ? ' new-cell' : ''));
+        game2048.cells[i][j] = { el: game2048.cellEls[key], val: val };
+        setTimeout(function(k) {
+          return function() {
+            var el2 = game2048.cellEls[k];
+            if (el2) el2.classList.remove('merged', 'new-cell');
+          };
+        }(key), 200);
       }
-      board.appendChild(cell);
     }
   }
+
+  game2048.prevGrid = JSON.parse(JSON.stringify(game2048.grid));
+  game2048.justMerged = {};
+}
+
+function update2048CellPositions() {
+  var board = document.getElementById('game2048-board');
+  if (!game2048.boardRect) {
+    game2048.boardRect = board.getBoundingClientRect();
+  }
+  var rect = board.getBoundingClientRect();
+  var gap = 12;
+  var cellSize = (rect.width - gap * 5) / 4;
+
+  // 隐藏所有格再显示有值的
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      var key = i + '-' + j;
+      var el = game2048.cellEls[key];
+      if (el) {
+        el.style.width = cellSize + 'px';
+        el.style.height = cellSize + 'px';
+        el.style.left = (gap + j * (cellSize + gap)) + 'px';
+        el.style.top = (gap + i * (cellSize + gap)) + 'px';
+        el.style.fontSize = Math.max(cellSize * 0.35, 16) + 'px';
+      }
+    }
+  }
+}
+
+function updateCellStyle(el, val, colors) {
+  el.textContent = val;
+  el.style.backgroundColor = colors[val] || '#3c3a32';
+  el.style.color = val <= 4 ? '#776e65' : '#f9f6f2';
 }
 
 function moveGame2048(direction) {
   if (game2048.gameOver) return;
 
-  var oldGrid = JSON.stringify(game2048.grid);
+  var oldGrid = JSON.parse(JSON.stringify(game2048.grid));
   var moved = false;
+  game2048.mergedCells = {}; // 记录合并位置 { 'i-j': true }
 
   if (direction === 'left') {
     for (var i = 0; i < 4; i++) {
+      var before = JSON.stringify(game2048.grid[i]);
       var row = slideAndMerge(game2048.grid[i]);
-      if (JSON.stringify(row) !== JSON.stringify(game2048.grid[i])) moved = true;
+      if (JSON.stringify(row) !== before) moved = true;
       game2048.grid[i] = row;
+      // 找出合并了的位置（值变大的格）
+      for (var j = 0; j < 4; j++) {
+        if (row[j] > 0 && oldGrid[i][j] > 0 && row[j] > oldGrid[i][j]) {
+          game2048.mergedCells[i + '-' + j] = true;
+        }
+      }
     }
   } else if (direction === 'right') {
     for (var i = 0; i < 4; i++) {
-      var row = game2048.grid[i].reverse();
+      var row = game2048.grid[i].slice().reverse();
       row = slideAndMerge(row);
-      row.reverse();
-      if (JSON.stringify(row) !== JSON.stringify(game2048.grid[i].reverse())) moved = true;
-      game2048.grid[i] = row.reverse();
+      var finalRow = row.reverse();
+      if (JSON.stringify(finalRow) !== JSON.stringify(game2048.grid[i])) moved = true;
+      game2048.grid[i] = finalRow;
     }
   } else if (direction === 'up') {
     for (var j = 0; j < 4; j++) {
@@ -782,14 +889,20 @@ function moveGame2048(direction) {
       col = slideAndMerge(col);
       if (JSON.stringify(col) !== JSON.stringify([game2048.grid[0][j], game2048.grid[1][j], game2048.grid[2][j], game2048.grid[3][j]])) moved = true;
       for (var i = 0; i < 4; i++) game2048.grid[i][j] = col[i];
+      for (var i2 = 0; i2 < 4; i2++) {
+        if (col[i2] > 0 && oldGrid[i2][j] > 0 && col[i2] > oldGrid[i2][j]) {
+          game2048.mergedCells[i2 + '-' + j] = true;
+        }
+      }
     }
   } else if (direction === 'down') {
     for (var j = 0; j < 4; j++) {
       var col = [game2048.grid[3][j], game2048.grid[2][j], game2048.grid[1][j], game2048.grid[0][j]];
       col = slideAndMerge(col);
       col.reverse();
-      if (JSON.stringify(col) !== JSON.stringify([game2048.grid[3][j], game2048.grid[2][j], game2048.grid[1][j], game2048.grid[0][j]].reverse())) moved = true;
-      for (var i = 0; i < 4; i++) game2048.grid[i][j] = col[3-i];
+      var finalCol = [col[3], col[2], col[1], col[0]];
+      if (JSON.stringify(finalCol) !== JSON.stringify([game2048.grid[0][j], game2048.grid[1][j], game2048.grid[2][j], game2048.grid[3][j]])) moved = true;
+      for (var i = 0; i < 4; i++) game2048.grid[i][j] = finalCol[i];
     }
   }
 
@@ -883,13 +996,30 @@ var brickGame = {
   ctx: null,
   paddle: { x: 0, y: 0, width: 100, height: 14, targetX: 0, trailX: 0 },
   ball: { x: 0, y: 0, dx: 4, dy: -4, radius: 8, trail: [] },
+  balls: [],      // 支持多球
   bricks: [],
   score: 0,
   lives: 3,
   level: 1,
   running: false,
   animationId: null,
-  brickColors: ['#e94560', '#f65e3b', '#ffd166', '#06d6a0', '#0074d9', '#533483']
+  brickColors: ['#e94560', '#f65e3b', '#ffd166', '#06d6a0', '#0074d9', '#533483'],
+  // 掉落道具
+  powerups: [],
+  powerupTypes: [
+    { id: 'wide',     emoji: '🔱', label: '挡板加宽', color: '#0074d9', weight: 6 },
+    { id: 'life',     emoji: '❤️', label: '加命',     color: '#e94560', weight: 3 },
+    { id: 'multi',    emoji: '⚡', label: '三球',     color: '#ffd166', weight: 4 },
+    { id: 'slow',     emoji: '🐢', label: '减速',     color: '#06d6a0', weight: 5 },
+    { id: 'laser',    emoji: '🔱', label: '穿透',     color: '#533483', weight: 3 }
+  ],
+  // Buff状态
+  buffs: {
+    wide:    { active: false, timer: null, endTime: 0, origWidth: 100 },
+    multi:   { active: false, timer: null, endTime: 0 },
+    slow:    { active: false, timer: null, endTime: 0, origSpeed: 4 },
+    laser:   { active: false, timer: null, endTime: 0 }
+  }
 };
 
 function initBrickGame() {
@@ -902,6 +1032,10 @@ function initBrickGame() {
   brickGame.level = 1;
   brickGame.running = false;
 
+  // 清空道具和Buff
+  brickGame.powerups = [];
+  clearAllBuffs();
+
   // 设置挡板位置
   brickGame.paddle.width = 100;
   brickGame.paddle.x = (brickGame.canvas.width - brickGame.paddle.width) / 2;
@@ -909,9 +1043,10 @@ function initBrickGame() {
   brickGame.paddle.targetX = brickGame.paddle.x;
   brickGame.paddle.trailX = brickGame.paddle.x;
 
-  // 设置小球位置 + 清空尾迹
-  brickGame.ball.trail = [];
-  resetBall();
+  // 初始化小球列表
+  brickGame.balls = [];
+  brickGame.ball = { x: 0, y: 0, dx: 4, dy: -4, radius: 8, trail: [] };
+  addBall();
 
   // 创建砖块
   createBricks();
@@ -933,6 +1068,20 @@ function initBrickGame() {
   renderBrick();
 }
 
+function addBall() {
+  var b = {
+    x: brickGame.canvas.width / 2,
+    y: brickGame.canvas.height - 50,
+    dx: 4 * (Math.random() > 0.5 ? 1 : -1),
+    dy: -4,
+    radius: 8,
+    trail: []
+  };
+  brickGame.balls.push(b);
+  brickGame.ball = b; // 主球引用
+  return b;
+}
+
 function resetBall() {
   brickGame.ball.trail = []; // 清空尾迹
   brickGame.ball.x = brickGame.canvas.width / 2;
@@ -940,6 +1089,157 @@ function resetBall() {
   brickGame.ball.dx = 4 * (Math.random() > 0.5 ? 1 : -1);
   brickGame.ball.dy = -4;
   brickGame.running = false;
+}
+
+function clearAllBuffs() {
+  var buffs = brickGame.buffs;
+  ['wide', 'multi', 'slow', 'laser'].forEach(function(k) {
+    if (buffs[k].timer) clearTimeout(buffs[k].timer);
+    buffs[k].active = false;
+    buffs[k].timer = null;
+  });
+  // 恢复挡板宽度
+  if (brickGame.paddle) {
+    brickGame.paddle.width = buffs.wide ? buffs.wide.origWidth : 100;
+  }
+}
+
+function activateBuff(type, duration) {
+  var buffs = brickGame.buffs;
+  var p = brickGame.paddle;
+  if (buffs[type].timer) clearTimeout(buffs[type].timer);
+
+  if (type === 'wide') {
+    buffs.wide.origWidth = buffs.wide.origWidth || p.width;
+    p.width = Math.min(p.width * 1.5, brickGame.canvas.width * 0.8);
+    buffs.wide.active = true;
+    buffs.wide.endTime = Date.now() + duration;
+    buffs.wide.timer = setTimeout(function() {
+      p.width = buffs.wide.origWidth;
+      buffs.wide.active = false;
+    }, duration);
+
+  } else if (type === 'multi') {
+    if (!buffs.multi.active) {
+      // 加两个额外球
+      var mainBall = brickGame.balls[0];
+      for (var i = 0; i < 2; i++) {
+        var nb = {
+          x: mainBall.x,
+          y: mainBall.y,
+          dx: (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 2),
+          dy: -Math.abs(mainBall.dy),
+          radius: 8,
+          trail: []
+        };
+        brickGame.balls.push(nb);
+      }
+    }
+    buffs.multi.active = true;
+    buffs.multi.endTime = Date.now() + duration;
+    buffs.multi.timer = setTimeout(function() {
+      // 移除多余球，只保留第一个
+      brickGame.balls = [brickGame.balls[0]];
+      buffs.multi.active = false;
+    }, duration);
+
+  } else if (type === 'slow') {
+    buffs.slow.origSpeed = buffs.slow.origSpeed || 4;
+    buffs.slow.active = true;
+    buffs.slow.endTime = Date.now() + duration;
+    // 降低所有球速
+    brickGame.balls.forEach(function(b) {
+      b.dx *= 0.5;
+      b.dy *= 0.5;
+    });
+    buffs.slow.timer = setTimeout(function() {
+      brickGame.balls.forEach(function(b) {
+        b.dx *= 2;
+        b.dy *= 2;
+      });
+      buffs.slow.active = false;
+    }, duration);
+
+  } else if (type === 'laser') {
+    buffs.laser.active = true;
+    buffs.laser.endTime = Date.now() + duration;
+    buffs.laser.timer = setTimeout(function() {
+      buffs.laser.active = false;
+    }, duration);
+  }
+}
+
+function spawnPowerup(brick) {
+  // 35% 概率掉落道具
+  if (Math.random() > 0.35) return;
+
+  var totalWeight = brickGame.powerupTypes.reduce(function(s, t) { return s + t.weight; }, 0);
+  var r = Math.random() * totalWeight;
+  var selected = brickGame.powerupTypes[0];
+  var cum = 0;
+  for (var i = 0; i < brickGame.powerupTypes.length; i++) {
+    cum += brickGame.powerupTypes[i].weight;
+    if (r < cum) { selected = brickGame.powerupTypes[i]; break; }
+  }
+
+  brickGame.powerups.push({
+    x: brick.x + brick.width / 2,
+    y: brick.y + brick.height / 2,
+    radius: 14,
+    type: selected.id,
+    emoji: selected.emoji,
+    color: selected.color,
+    vy: 1.5,          // 下落速度
+    wobble: Math.random() * Math.PI * 2, // 晃动相位
+    age: 0
+  });
+}
+
+function updatePowerups() {
+  var now = Date.now();
+  brickGame.powerups = brickGame.powerups.filter(function(pu) {
+    pu.y += pu.vy;
+    pu.wobble += 0.08;
+    pu.age++;
+
+    var p = brickGame.paddle;
+    // 检测挡板碰撞
+    if (pu.y + pu.radius > p.y && pu.y - pu.radius < p.y + p.height &&
+        pu.x > p.x && pu.x < p.x + p.width) {
+      // 捡到道具
+      triggerPowerup(pu);
+      return false;
+    }
+    // 掉落出界
+    return pu.y < brickGame.canvas.height + 30;
+  });
+}
+
+function triggerPowerup(pu) {
+  var p = brickGame.paddle;
+  if (pu.type === 'wide') {
+    activateBuff('wide', 10000);
+    flashText('🔱 挡板加宽！');
+  } else if (pu.type === 'life') {
+    brickGame.lives++;
+    updateBrickDisplay();
+    flashText('❤️ +1生命！');
+  } else if (pu.type === 'multi') {
+    activateBuff('multi', 10000);
+    flashText('⚡ 三球模式！');
+  } else if (pu.type === 'slow') {
+    activateBuff('slow', 8000);
+    flashText('🐢 球速减慢！');
+  } else if (pu.type === 'laser') {
+    activateBuff('laser', 8000);
+    flashText('🔱 穿透模式！');
+  }
+}
+
+function flashText(msg) {
+  // 画布顶部飘字
+  brickGame.flashMsg = msg;
+  brickGame.flashMsgTimer = Date.now();
 }
 
 function createBricks() {
@@ -1004,77 +1304,106 @@ function playBrickGame() {
   renderBrick();
 
   // --- 挡板惯性滑动（LERP） ---
-  var lerpFactor = 0.18; // 越小越滑，越大越跟手
+  var lerpFactor = 0.18;
   brickGame.paddle.trailX = brickGame.paddle.x;
   brickGame.paddle.x += (brickGame.paddle.targetX - brickGame.paddle.x) * lerpFactor;
-  // 夹紧边界
   if (brickGame.paddle.x < 0) brickGame.paddle.x = 0;
   if (brickGame.paddle.x + brickGame.paddle.width > brickGame.canvas.width) {
     brickGame.paddle.x = brickGame.canvas.width - brickGame.paddle.width;
   }
 
-  // --- 球尾迹更新 ---
-  var ball = brickGame.ball;
-  ball.trail.push({ x: ball.x, y: ball.y });
-  if (ball.trail.length > 12) ball.trail.shift(); // 最多12帧尾迹
+  // --- 更新所有球 ---
+  var lostBalls = 0;
+  brickGame.balls.forEach(function(ball) {
+    // 尾迹
+    ball.trail.push({ x: ball.x, y: ball.y });
+    if (ball.trail.length > 12) ball.trail.shift();
 
-  // 移动球
-  brickGame.ball.x += brickGame.ball.dx;
-  brickGame.ball.y += brickGame.ball.dy;
+    // 移动
+    ball.x += ball.dx;
+    ball.y += ball.dy;
 
-  // 墙壁碰撞
-  if (brickGame.ball.x + brickGame.ball.radius > brickGame.canvas.width ||
-      brickGame.ball.x - brickGame.ball.radius < 0) {
-    brickGame.ball.dx = -brickGame.ball.dx;
-  }
-  if (brickGame.ball.y - brickGame.ball.radius < 0) {
-    brickGame.ball.dy = -brickGame.ball.dy;
-  }
+    // 墙壁碰撞（若不是穿透模式）
+    if (!brickGame.buffs.laser.active) {
+      if (ball.x + ball.radius > brickGame.canvas.width || ball.x - ball.radius < 0) {
+        ball.dx = -ball.dx;
+        ball.x = Math.max(ball.radius, Math.min(brickGame.canvas.width - ball.radius, ball.x));
+      }
+      if (ball.y - ball.radius < 0) {
+        ball.dy = -ball.dy;
+        ball.y = ball.radius;
+      }
+    } else {
+      // 穿透模式：左右出界从另一边出来
+      if (ball.x < 0) ball.x = brickGame.canvas.width;
+      if (ball.x > brickGame.canvas.width) ball.x = 0;
+    }
 
-  // 挡板碰撞
-  if (brickGame.ball.y + brickGame.ball.radius > brickGame.paddle.y &&
-      brickGame.ball.x > brickGame.paddle.x &&
-      brickGame.ball.x < brickGame.paddle.x + brickGame.paddle.width) {
-    brickGame.ball.dy = -Math.abs(brickGame.ball.dy);
-    // 根据击球位置调整角度
-    var hitPos = (brickGame.ball.x - brickGame.paddle.x) / brickGame.paddle.width;
-    brickGame.ball.dx = (hitPos - 0.5) * 8;
-  }
+    // 挡板碰撞
+    var p = brickGame.paddle;
+    if (ball.y + ball.radius > p.y && ball.y - ball.radius < p.y + p.height &&
+        ball.x > p.x && ball.x < p.x + p.width && ball.dy > 0) {
+      ball.dy = -Math.abs(ball.dy);
+      var hitPos = (ball.x - p.x) / p.width;
+      ball.dx = (hitPos - 0.5) * 8;
+      // 确保最小速度
+      var speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+      if (speed < 3) {
+        ball.dx *= 3 / speed;
+        ball.dy *= 3 / speed;
+      }
+    }
 
-  // 球落底
-  if (brickGame.ball.y + brickGame.ball.radius > brickGame.canvas.height) {
+    // 砖块碰撞
+    for (var bi = 0; bi < brickGame.bricks.length; bi++) {
+      var brick = brickGame.bricks[bi];
+      if (!brick.alive) continue;
+
+      if (ball.x + ball.radius > brick.x &&
+          ball.x - ball.radius < brick.x + brick.width &&
+          ball.y + ball.radius > brick.y &&
+          ball.y - ball.radius < brick.y + brick.height) {
+        brick.alive = false;
+        if (!brickGame.buffs.laser.active) {
+          ball.dy = -ball.dy;
+        }
+        brickGame.score += 10;
+        updateBrickDisplay();
+        spawnPowerup(brick);
+      }
+    }
+
+    // 球落底
+    if (ball.y + ball.radius > brickGame.canvas.height) {
+      lostBalls++;
+    }
+  });
+
+  // 处理丢球
+  if (lostBalls >= brickGame.balls.length) {
     brickGame.lives--;
     updateBrickDisplay();
     if (brickGame.lives <= 0) {
       brickGame.running = false;
       brickGameOver();
+      return;
     } else {
+      // 移除所有球，重置主球
+      brickGame.balls = [];
+      addBall();
       resetBall();
       setTimeout(function() { brickGame.running = true; }, 500);
     }
   }
 
-  // 砖块碰撞
-  for (var i = 0; i < brickGame.bricks.length; i++) {
-    var brick = brickGame.bricks[i];
-    if (!brick.alive) continue;
-
-    if (brickGame.ball.x + brickGame.ball.radius > brick.x &&
-        brickGame.ball.x - brickGame.ball.radius < brick.x + brick.width &&
-        brickGame.ball.y + brickGame.ball.radius > brick.y &&
-        brickGame.ball.y - brickGame.ball.radius < brick.y + brick.height) {
-      brick.alive = false;
-      brickGame.ball.dy = -brickGame.ball.dy;
-      brickGame.score += 10;
-      updateBrickDisplay();
-
-      // 检查是否通关
-      if (brickGame.bricks.every(function(b) { return !b.alive; })) {
-        brickNextLevel();
-        return;
-      }
-    }
+  // 检查是否通关
+  if (brickGame.bricks.every(function(b) { return !b.alive; })) {
+    brickNextLevel();
+    return;
   }
+
+  // 更新掉落道具
+  updatePowerups();
 
   brickGame.animationId = requestAnimationFrame(playBrickGame);
 }
@@ -1146,37 +1475,97 @@ function renderBrick() {
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
   ctx.fill();
 
-  // --- 球尾迹光点 ---
-  var ball = brickGame.ball;
-  ball.trail.forEach(function(pos, i) {
-    var alpha = (i / ball.trail.length) * 0.5; // 越远越淡
-    var r = ball.radius * (0.3 + (i / ball.trail.length) * 0.7); // 越远越小
+  // --- 渲染所有球 ---
+  brickGame.balls.forEach(function(ball) {
+    // 尾迹光点
+    ball.trail.forEach(function(pos, i) {
+      var alpha = (i / ball.trail.length) * 0.5;
+      var r = ball.radius * (0.3 + (i / ball.trail.length) * 0.7);
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,209,102,' + alpha + ')';
+      ctx.fill();
+    });
+
+    // 球主体
+    var ballColor = brickGame.buffs.laser.active ? '#e94560' : '#ffd166';
+    ctx.shadowColor = ballColor;
+    ctx.shadowBlur = 20;
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,209,102,' + alpha + ')';
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    var ballGrad = ctx.createRadialGradient(
+      ball.x - 2, ball.y - 2, 0,
+      ball.x, ball.y, ball.radius
+    );
+    ballGrad.addColorStop(0, '#ffffff');
+    ballGrad.addColorStop(1, ballColor);
+    ctx.fillStyle = ballGrad;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 球高光
+    ctx.beginPath();
+    ctx.arc(ball.x - 3, ball.y - 3, 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
     ctx.fill();
   });
 
-  // 球主体（带发光）
-  ctx.shadowColor = '#ffd166';
-  ctx.shadowBlur = 20;
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-  var ballGradient = ctx.createRadialGradient(
-    ball.x - 2, ball.y - 2, 0,
-    ball.x, ball.y, ball.radius
-  );
-  ballGradient.addColorStop(0, '#ffffff');
-  ballGradient.addColorStop(1, '#ffd166');
-  ctx.fillStyle = ballGradient;
-  ctx.fill();
-  ctx.shadowBlur = 0;
+  // --- 渲染掉落道具 ---
+  brickGame.powerups.forEach(function(pu) {
+    var wobbleX = Math.sin(pu.wobble) * 4;
+    ctx.shadowColor = pu.color;
+    ctx.shadowBlur = 15;
 
-  // 球高光点
-  ctx.beginPath();
-  ctx.arc(ball.x - 3, ball.y - 3, 2, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.fill();
+    // 道具圆形背景
+    ctx.beginPath();
+    ctx.arc(pu.x + wobbleX, pu.y, pu.radius, 0, Math.PI * 2);
+    ctx.fillStyle = pu.color + 'cc';
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // 道具 emoji
+    ctx.font = '16px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(pu.emoji, pu.x + wobbleX, pu.y + 1);
+  });
+
+  // --- Buff 指示器（画布左上角） ---
+  var buffs = brickGame.buffs;
+  var now = Date.now();
+  var ix = 10, iy = 8;
+  var activeBuffs = [];
+  if (buffs.wide.active) activeBuffs.push({ label: '🔱宽', end: buffs.wide.endTime });
+  if (buffs.multi.active) activeBuffs.push({ label: '⚡三球', end: buffs.multi.endTime });
+  if (buffs.slow.active)  activeBuffs.push({ label: '🐢慢', end: buffs.slow.endTime });
+  if (buffs.laser.active) activeBuffs.push({ label: '🔱穿', end: buffs.laser.endTime });
+
+  activeBuffs.forEach(function(b, i) {
+    var remaining = Math.max(0, Math.ceil((b.end - now) / 1000));
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(ix - 2, iy + i * 22 - 2, 60, 18);
+    ctx.fillStyle = '#ffd166';
+    ctx.fillText(b.label + ' ' + remaining + 's', ix, iy + i * 22 + 12);
+  });
+
+  // --- 飘字特效 ---
+  if (brickGame.flashMsg && now - brickGame.flashMsgTimer < 1500) {
+    var age = now - brickGame.flashMsgTimer;
+    var alpha = Math.max(0, 1 - age / 1500);
+    var yOff = -age * 0.03;
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,' + alpha + ')';
+    ctx.shadowColor = '#ffd166';
+    ctx.shadowBlur = 10;
+    ctx.fillText(brickGame.flashMsg, canvas.width / 2, canvas.height / 2 + yOff);
+    ctx.shadowBlur = 0;
+  }
 
   // 如果没开始，显示提示
   if (!brickGame.running) {
@@ -1197,11 +1586,20 @@ function brickNextLevel() {
   brickGame.level++;
   brickGame.running = false;
 
+  // 清空 Buff 和道具
+  clearAllBuffs();
+  brickGame.powerups = [];
+
   // 增加挡板宽度
   brickGame.paddle.width = Math.max(60, 100 - brickGame.level * 5);
+  brickGame.paddle.targetX = (brickGame.canvas.width - brickGame.paddle.width) / 2;
+
+  // 重置球列表
+  brickGame.balls = [];
+  addBall();
+  resetBall();
 
   createBricks();
-  resetBall();
   updateBrickDisplay();
   renderBrick();
 
@@ -1221,6 +1619,8 @@ function brickNextLevel() {
 }
 
 function brickGameOver() {
+  clearAllBuffs();
+  brickGame.powerups = [];
   var bestKey = getScoreKey('brick');
   var best = parseInt(localStorage.getItem(bestKey)) || 0;
   if (brickGame.score > best) {
